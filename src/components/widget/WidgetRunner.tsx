@@ -8,6 +8,7 @@ import { ReactionTimeTestWidget } from './tests/ReactionTimeTestWidget';
 import { DigitSpanTestWidget } from './tests/DigitSpanTestWidget';
 import { RANVocalTestWidget } from './tests/RANVocalTestWidget';
 import { VoiceTestWidget } from './tests/VoiceTestWidget';
+import { PatternTestWidget } from './tests/PatternTestWidget';
 import { Loader2, Shield, CheckCircle, XCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { detectDevTools } from '@/lib/devtools-detection';
@@ -410,7 +411,7 @@ export function WidgetRunner({ widgetId }: Props) {
                 <p className="text-zinc-400 text-sm mt-4">{finalResult.error}</p>
               )}
               {(finalResult.backendStatus || finalResult.backendBody) && (
-                <div className="mt-4 text-left text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-900/40 rounded-md p-3 font-mono whitespace-pre-wrap break-words">
+                <div className="mt-4 text-left text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-900/40 rounded-md p-3 font-mono whitespace-pre-wrap wrap-break-word">
                   {finalResult.backendStatus ? `Status: ${finalResult.backendStatus}\n` : ''}
                   {finalResult.backendBody ? String(finalResult.backendBody).slice(0, 500) : ''}
                 </div>
@@ -533,6 +534,20 @@ export function WidgetRunner({ widgetId }: Props) {
             onComplete={(data) =>
               handleTestComplete({
                 testType: 'voice',
+                score: data.score,
+                duration: data.duration,
+                data,
+              })
+            }
+          />
+        )}
+
+        {currentTest.testType === 'pattern' && (
+          <PatternTestWidget
+            config={currentTest}
+            onComplete={(data) =>
+              handleTestComplete({
+                testType: 'pattern',
                 score: data.score,
                 duration: data.duration,
                 data,

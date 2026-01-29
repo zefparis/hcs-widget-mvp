@@ -36,6 +36,7 @@ export async function POST(
                      'unknown';
 
     const backendUrl = process.env.HCS_BACKEND_URL || 'https://hcs-u7-backend.onrender.com';
+    const apiKey = process.env.HCS_BACKEND_API_KEY || 'hcs_backend_secret_key_2026';
     console.log('[Backend] Calling external backend:', `${backendUrl}/api/widgets/${widgetId}/verify`);
 
     // Appel au backend HCS-U7 réel
@@ -46,6 +47,7 @@ export async function POST(
         headers: {
           'Content-Type': 'application/json',
           'X-HCS-Origin': 'widget-mvp',
+          'X-HCS-API-Key': apiKey,
           'X-Forwarded-For': clientIp,
           'User-Agent': userAgent,
           'X-HCS-Client-UA': userAgent,

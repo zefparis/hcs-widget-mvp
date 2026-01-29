@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     const widgetConfig = mapDashboardToWidget(body.widget);
 
     const backendUrl = process.env.HCS_BACKEND_URL || 'https://hcs-u7-backend.onrender.com';
+    const backendApiKey = process.env.HCS_BACKEND_API_KEY || 'hcs_backend_secret_key_2026';
     
     try {
       const response = await fetch(`${backendUrl}/api/widgets/${body.widget.id}/sync`, {
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'X-HCS-Origin': 'widget-mvp',
+          'X-HCS-API-Key': backendApiKey,
         },
         body: JSON.stringify(widgetConfig),
       });

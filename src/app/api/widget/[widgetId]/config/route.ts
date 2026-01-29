@@ -8,6 +8,7 @@ export async function GET(
     const { widgetId } = await params;
     
     const backendUrl = process.env.HCS_BACKEND_URL || 'https://hcs-u7-backend.onrender.com';
+    const apiKey = process.env.HCS_BACKEND_API_KEY || 'hcs_backend_secret_key_2026';
     const defaultTenantId =
       process.env.HCS_DEFAULT_TENANT_ID ||
       process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID ||
@@ -20,6 +21,7 @@ export async function GET(
         headers: {
           'Content-Type': 'application/json',
           'X-HCS-Origin': 'widget-mvp',
+          'X-HCS-API-Key': apiKey,
         },
         cache: 'no-store',
       }

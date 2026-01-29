@@ -6,10 +6,8 @@ export default function WidgetLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
-      <body className="bg-white dark:bg-zinc-950">
-        {children}
-      </body>
-    </html>
+    <div className="min-h-screen bg-white dark:bg-zinc-950">
+      {children}
+    </div>
   );
 }

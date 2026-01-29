@@ -1,5 +1,5 @@
 export interface WidgetTestConfig {
-  testType: 'stroop' | 'ran_vocal' | 'voice' | 'digit_span' | 'reaction_time';
+  testType: 'stroop' | 'ran_vocal' | 'voice' | 'digit_span' | 'reaction_time' | 'pattern';
   enabled: boolean;
   trials?: number;
   difficulty?: 'easy' | 'medium' | 'hard';
