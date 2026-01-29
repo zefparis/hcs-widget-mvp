@@ -102,6 +102,20 @@ function mapDashboardToWidget(dashboardWidget: any) {
     fort_knox: { threshold: 75, defaultDifficulty: 'hard' as const },
   };
 
+  // Mapping des noms de tests du dashboard vers les types du widget
+  const testNameMapping: Record<string, string> = {
+    'Test de Stroop': 'stroop',
+    'stroop': 'stroop',
+    'RAN Vocal': 'ran_vocal',
+    'ran_vocal': 'ran_vocal',
+    'Biométrie Vocale': 'voice',
+    'voice': 'voice',
+    'Digit Span': 'digit_span',
+    'digit_span': 'digit_span',
+    'Temps de Réaction': 'reaction_time',
+    'reaction_time': 'reaction_time',
+  };
+
   const config = modeConfig[dashboardWidget.mode] || modeConfig.standard;
 
   return {
@@ -110,13 +124,16 @@ function mapDashboardToWidget(dashboardWidget: any) {
     siteUrl: dashboardWidget.siteUrl,
     tenantId: dashboardWidget.tenantId,
     threshold: dashboardWidget.threshold || config.threshold,
-    testsConfig: dashboardWidget.tests.map((test: any) => ({
-      testType: test.type,
-      enabled: test.enabled,
-      trials: test.trials || 5,
-      difficulty: test.difficulty || config.defaultDifficulty,
-      timeLimit: test.timeLimit,
-    })),
+    testsConfig: dashboardWidget.tests.map((test: any) => {
+      const mappedType = testNameMapping[test.type] || test.type;
+      return {
+        testType: mappedType,
+        enabled: test.enabled,
+        trials: test.trials || 5,
+        difficulty: test.difficulty || config.defaultDifficulty,
+        timeLimit: test.timeLimit,
+      };
+    }),
     theme: dashboardWidget.theme || 'light',
     language: dashboardWidget.language || 'fr',
     createdAt: new Date().toISOString(),
