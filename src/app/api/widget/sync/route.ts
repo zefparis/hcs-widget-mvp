@@ -110,10 +110,12 @@ function mapDashboardToWidget(dashboardWidget: any) {
     'ran_vocal': 'ran_vocal',
     'Biométrie Vocale': 'voice',
     'voice': 'voice',
-    'Digit Span': 'digit_span',
+    'Empan Mnésique': 'digit_span',
     'digit_span': 'digit_span',
     'Temps de Réaction': 'reaction_time',
     'reaction_time': 'reaction_time',
+    'Reconnaissance de Motifs': 'pattern',
+    'pattern': 'pattern',
   };
 
   const config = modeConfig[dashboardWidget.mode] || modeConfig.standard;
