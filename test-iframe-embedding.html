@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Widget Iframe Embedding</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+    .widget-container {
+      border: 2px solid #eee;
+      border-radius: 12px;
+      min-height: 500px;
+      background: #fafafa;
+      margin-top: 20px;
+    }
+    #status {
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: none;
+    }
+    #status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+    #status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+    .info {
+      background: #e7f3ff;
+      border: 1px solid #b3d9ff;
+      color: #004085;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test Widget Iframe Embedding</h1>
+    <p style="color: #666;">Test de l'intégration du widget HCS-U7 en iframe (simulation landing page)</p>
+
+    <div class="info">
+      <strong>🔍 Test en cours :</strong><br>
+      • Widget ID: <code>wgt_e7cec6afb18df420</code><br>
+      • URL: <code>http://localhost:3000/widget/wgt_e7cec6afb18df420?theme=light&lang=fr</code><br>
+      • Fix appliqué: Suppression de <code>X-Frame-Options: SAMEORIGIN</code>
+    </div>
+
+    <div class="widget-container" id="widget-container">
+      <p style="text-align: center; padding: 40px; color: #999;">Chargement du widget...</p>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const CONFIG = {
+      widgetId: 'wgt_e7cec6afb18df420',
+      widgetBaseUrl: 'http://localhost:3000',
+      theme: 'light',
+      lang: 'fr'
+    };
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+    }
+
+    function createWidget() {
+      const container = document.getElementById('widget-container');
+      
+      // Créer l'iframe
+      const iframe = document.createElement('iframe');
+      iframe.src = `${CONFIG.widgetBaseUrl}/widget/${CONFIG.widgetId}?theme=${CONFIG.theme}&lang=${CONFIG.lang}`;
+      iframe.style.width = '100%';
+      iframe.style.height = '500px';
+      iframe.style.border = 'none';
+      iframe.style.borderRadius = '8px';
+      iframe.allow = 'microphone';
+
+      // Écouter les événements de chargement
+      iframe.onload = function() {
+        console.log('✅ Iframe loaded successfully');
+        showStatus('✅ Widget chargé avec succès ! Le fix X-Frame-Options fonctionne.', 'success');
+      };
+
+      iframe.onerror = function() {
+        console.error('❌ Iframe failed to load');
+        showStatus('❌ Erreur de chargement du widget. Vérifiez que le serveur local est démarré.', 'error');
+      };
+
+      container.innerHTML = '';
+      container.appendChild(iframe);
+    }
+
+    // Écouter les messages du widget
+    window.addEventListener('message', (event) => {
+      console.log('📨 Message reçu:', event.data);
+
+      if (event.data.type === 'HCS_VERIFICATION_SUCCESS') {
+        showStatus(`✅ Vérification réussie ! Score: ${event.data.score}/100`, 'success');
+      }
+
+      if (event.data.type === 'HCS_VERIFICATION_FAILED') {
+        showStatus(`❌ Vérification échouée. Score: ${event.data.score}/100`, 'error');
+      }
+    });
+
+    // Créer le widget au chargement
+    createWidget();
+  </script>
+</body>
+</html>

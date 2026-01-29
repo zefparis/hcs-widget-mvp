@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HCS-U7 Widget App Gate Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .demo-section {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #1a1a2e;
+      margin-bottom: 8px;
+      font-size: 28px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+    h2 {
+      color: #333;
+      font-size: 20px;
+      margin-top: 30px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #eee;
+    }
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 12px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .btn-secondary:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    #result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 12px;
+      display: none;
+    }
+    #result.success {
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+      color: #155724;
+      border: 1px solid #b8dabc;
+      display: block;
+    }
+    #result.error {
+      background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+      color: #721c24;
+      border: 1px solid #f1b0b7;
+      display: block;
+    }
+    pre {
+      background: #1a1a2e;
+      color: #a5d6ff;
+      padding: 20px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+    }
+    .widget-container {
+      border: 2px dashed #ddd;
+      border-radius: 12px;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fafafa;
+    }
+    .badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .token-display {
+      word-break: break-all;
+      font-family: monospace;
+      font-size: 12px;
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .app-gate {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid #eee;
+      background: #fafafa;
+    }
+    .app-gate.locked {
+      border-color: #f1b0b7;
+      background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+      color: #721c24;
+    }
+    .app-gate.unlocked {
+      border-color: #b8dabc;
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+      color: #155724;
+    }
+    .btn[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-section">
+    <h1>HCS-U7 Anti-Bot Widget</h1>
+    <p class="subtitle">Démo d'intégration : après vérification, redirection automatique vers une application</p>
+
+    <h2>Test 1 : Widget Inline <span class="badge">Auto-init</span></h2>
+    <p style="color: #666; margin-bottom: 15px;">Le widget se charge automatiquement dans le conteneur ci-dessous.</p>
+    
+    <div id="hcs-captcha" 
+         data-hcs-widget-id="wgt_e7cec6afb18df420"
+         data-hcs-callback="onHCSSuccess"
+         class="widget-container">
+      <span style="color: #999;">Chargement du widget...</span>
+    </div>
+
+    <h2>Test 2 : Widget Modal <span class="badge">Manuel</span></h2>
+    <p style="color: #666; margin-bottom: 15px;">Cliquez sur le bouton pour ouvrir le widget en popup.</p>
+    <button class="btn" onclick="showModal()">Ouvrir Widget Modal</button>
+    <button class="btn btn-secondary" onclick="resetDemo()">↻ Réinitialiser</button>
+
+    <div id="result"></div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Code d'intégration</h2>
+    
+    <h3 style="font-size: 16px; color: #333; margin-top: 20px;">1. Charger le SDK</h3>
+    <pre><code>&lt;script src="https://votre-domaine.com/widget/v1/captcha.js"&gt;&lt;/script&gt;</code></pre>
+
+    <h3 style="font-size: 16px; color: #333; margin-top: 20px;">2. Widget Inline (auto-init)</h3>
+    <pre><code>&lt;div id="hcs-captcha" 
+     data-hcs-widget-id="VOTRE_WIDGET_ID"
+     data-hcs-callback="onHCSSuccess"&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+function onHCSSuccess(token, score) {
+  console.log('Token:', token);
+  console.log('Score:', score);
+  // Déverrouiller l'accès à l'app
+  localStorage.setItem('hcs_token', token);
+  document.querySelector('#enter-app').disabled = false;
+}
+&lt;/script&gt;</code></pre>
+
+    <h3 style="font-size: 16px; color: #333; margin-top: 20px;">3. Widget Modal (manuel)</h3>
+    <pre><code>&lt;script&gt;
+var hcs = Object.create(window.HCS);
+hcs.init({
+  widgetId: 'VOTRE_WIDGET_ID',
+  onSuccess: function(token, score) {
+    console.log('Vérifié!', token);
+    localStorage.setItem('hcs_token', token);
+    document.querySelector('#enter-app').disabled = false;
+  },
+  onError: function(error) {
+    console.error('Échec', error);
+  }
+});
+hcs.showModal();
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <!-- Charger SDK -->
+  <script src="/widget/v1/captcha.js"></script>
+
+  <script>
+    // Callback succès global
+    function onHCSSuccess(token, score) {
+      var result = document.getElementById('result');
+      result.className = 'success';
+      result.innerHTML = 
+        '<strong>✅ Vérification réussie !</strong><br><br>' +
+        '<strong>Score:</strong> ' + score + '/100<br><br>' +
+        '🚀 Redirection en cours...';
+
+      console.log('✅ Verification success');
+      console.log('Score:', score);
+      console.log('Token:', token);
+    }
+
+    // Callback erreur
+    function onHCSError(error) {
+      var result = document.getElementById('result');
+      result.className = 'error';
+      result.innerHTML = 
+        '<strong>❌ Vérification échouée</strong><br><br>' +
+        '<strong>Erreur:</strong> ' + (error.error || 'Inconnue') + '<br>' +
+        '<strong>Score:</strong> ' + (error.score || 'N/A');
+    }
+
+    function onHCSRedirect(url) {
+      var result = document.getElementById('result');
+      result.className = 'success';
+      result.style.display = 'block';
+      result.innerHTML =
+        '<strong>✅ Vérification réussie !</strong><br><br>' +
+        '🚀 Redirection vers :<br>' +
+        '<div class="token-display">' + url + '</div>';
+    }
+
+    // Fonction modal
+    function showModal() {
+      var hcs = Object.create(window.HCS);
+      var appId = null;
+      try {
+        var params = new URLSearchParams(window.location.search);
+        appId = params.get('appId');
+      } catch (e) {}
+
+      hcs.init({
+        widgetId: 'wgt_e7cec6afb18df420',
+        appId: appId,
+        onSuccess: function(token, score) {
+          onHCSSuccess(token, score);
+        },
+        onError: function(error) {
+          onHCSError(error);
+        },
+        onRedirect: function(url) {
+          onHCSRedirect(url);
+        },
+        onClose: function() {
+          console.log('Modal fermé');
+        }
+      });
+      hcs.showModal();
+    }
+
+    // Reset demo
+    function resetDemo() {
+      document.getElementById('result').className = '';
+      document.getElementById('result').style.display = 'none';
+      location.reload();
+    }
+  </script>
+</body>
+</html>
