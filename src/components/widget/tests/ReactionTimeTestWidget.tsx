@@ -90,6 +90,7 @@ export function ReactionTimeTestWidget({ config, onComplete }: Props) {
     
     if (currentTrial + 1 < totalTrials) {
       setCurrentTrial(currentTrial + 1);
+      setPhase('ready');
       startTrial();
     } else {
       const duration = Date.now() - startTime;
@@ -109,6 +110,17 @@ export function ReactionTimeTestWidget({ config, onComplete }: Props) {
       });
     }
   };
+
+  // Auto-advance to next trial after showing result
+  useEffect(() => {
+    if (phase === 'result') {
+      const timer = setTimeout(() => {
+        nextTrial();
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [phase, currentTrial]);
 
   if (phase === 'instruction') {
     return (
@@ -153,9 +165,16 @@ export function ReactionTimeTestWidget({ config, onComplete }: Props) {
           </div>
         )}
 
-        <Button onClick={nextTrial} size="lg">
-          {currentTrial + 1 < totalTrials ? 'Essai suivant' : 'Terminer'}
-        </Button>
+        <div className="flex justify-center gap-1 mt-4">
+          {Array.from({ length: totalTrials }).map((_, i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                i < currentTrial ? 'bg-green-500' : i === currentTrial ? 'bg-blue-600' : 'bg-zinc-300'
+              }`}
+            />
+          ))}
+        </div>
       </div>
     );
   }
