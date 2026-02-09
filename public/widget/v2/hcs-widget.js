@@ -275,6 +275,345 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // BEHAVIORAL SIGNAL COLLECTOR (Module 2B) — Anti proxy+human-like-timing
+  // Collects mouse dynamics, keystroke biometrics, scroll patterns, touch,
+  // and micro-timing entropy that bots cannot simulate even with proxies.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  var behaviorCollector = {
+    startTime: Date.now(),
+    firstInteractionTime: null,
+    lastActivityTime: Date.now(),
+    idleGapCount: 0,
+    MAX_SAMPLES: 500,
+
+    // Mouse tracking
+    mousePoints: [],
+    mouseVelocities: [],
+    mouseAccelerations: [],
+    mouseCurvatures: [],
+    clickCount: 0,
+
+    // Keystroke tracking
+    keyDownTimes: {},
+    keystrokeIntervals: [],
+    keystrokeDwells: [],
+    flightTimes: [],
+    lastKeyUpTime: 0,
+    keystrokeCount: 0,
+
+    // Scroll tracking
+    scrollCount: 0,
+    scrollVelocities: [],
+    lastScrollY: 0,
+    lastScrollTime: 0,
+    scrollDirectionChanges: 0,
+    lastScrollDirection: 0,
+
+    // Touch tracking
+    touchCount: 0,
+    touchPressures: [],
+    touchRadii: [],
+
+    // Form tracking
+    copyPasteCount: 0,
+
+    // Micro-timing for entropy analysis
+    microTimings: [],
+
+    // ── Helpers ──
+    _mean: function(arr) {
+      if (arr.length === 0) return 0;
+      var sum = 0;
+      for (var i = 0; i < arr.length; i++) sum += arr[i];
+      return sum / arr.length;
+    },
+
+    _std: function(arr) {
+      if (arr.length < 2) return 0;
+      var m = this._mean(arr);
+      var variance = 0;
+      for (var i = 0; i < arr.length; i++) variance += (arr[i] - m) * (arr[i] - m);
+      return Math.sqrt(variance / (arr.length - 1));
+    },
+
+    _computeCurvature: function(p1, p2, p3) {
+      var ax = p2.x - p1.x, ay = p2.y - p1.y;
+      var bx = p3.x - p2.x, by = p3.y - p2.y;
+      var cross = Math.abs(ax * by - ay * bx);
+      var a = Math.sqrt(ax * ax + ay * ay);
+      var b = Math.sqrt(bx * bx + by * by);
+      var cx = p3.x - p1.x, cy = p3.y - p1.y;
+      var c = Math.sqrt(cx * cx + cy * cy);
+      var denom = a * b * c;
+      return denom === 0 ? 0 : (2 * cross) / denom;
+    },
+
+    _computeTimingEntropy: function(timings) {
+      if (timings.length < 5) return 0.5;
+      var intervals = [];
+      for (var i = 1; i < timings.length; i++) intervals.push(timings[i] - timings[i - 1]);
+      var numBins = 20;
+      var minVal = Infinity, maxVal = -Infinity;
+      for (var j = 0; j < intervals.length; j++) {
+        if (intervals[j] < minVal) minVal = intervals[j];
+        if (intervals[j] > maxVal) maxVal = intervals[j];
+      }
+      var range = maxVal - minVal;
+      if (range === 0) return 0;
+      var bins = [];
+      for (var k = 0; k < numBins; k++) bins.push(0);
+      for (var l = 0; l < intervals.length; l++) {
+        var idx = Math.min(Math.floor(((intervals[l] - minVal) / range) * numBins), numBins - 1);
+        bins[idx]++;
+      }
+      var entropy = 0;
+      var total = intervals.length;
+      for (var m = 0; m < bins.length; m++) {
+        if (bins[m] > 0) {
+          var p = bins[m] / total;
+          entropy -= p * Math.log2(p);
+        }
+      }
+      var maxEntropy = Math.log2(numBins);
+      return maxEntropy > 0 ? entropy / maxEntropy : 0;
+    },
+
+    _computeSkewness: function(arr) {
+      if (arr.length < 3) return 0;
+      var m = this._mean(arr), s = this._std(arr);
+      if (s === 0) return 0;
+      var n = arr.length, sum = 0;
+      for (var i = 0; i < n; i++) sum += Math.pow((arr[i] - m) / s, 3);
+      return (n / ((n - 1) * (n - 2))) * sum;
+    },
+
+    _computeKurtosis: function(arr) {
+      if (arr.length < 4) return 3;
+      var m = this._mean(arr), s = this._std(arr);
+      if (s === 0) return 0;
+      var n = arr.length, sum = 0;
+      for (var i = 0; i < n; i++) sum += Math.pow((arr[i] - m) / s, 4);
+      return (sum / n) - 3;
+    },
+
+    _isLinearMovement: function() {
+      if (this.mousePoints.length < 10) return false;
+      var pts = this.mousePoints.slice(-50);
+      var linear = 0, total = 0;
+      for (var i = 2; i < pts.length; i++) {
+        var curv = this._computeCurvature(pts[i - 2], pts[i - 1], pts[i]);
+        total++;
+        if (curv < 0.001) linear++;
+      }
+      return total > 0 && (linear / total) > 0.8;
+    },
+
+    _computeMicroTimingEntropy: function() {
+      if (this.microTimings.length < 10) return 0.5;
+      var intervals = [];
+      for (var i = 1; i < this.microTimings.length; i++) {
+        intervals.push(this.microTimings[i] - this.microTimings[i - 1]);
+      }
+      // Autocorrelation check
+      var autocorr = 0;
+      if (intervals.length > 2) {
+        var m = this._mean(intervals), s = this._std(intervals);
+        if (s > 0) {
+          var sum = 0;
+          for (var j = 1; j < intervals.length; j++) {
+            sum += ((intervals[j] - m) / s) * ((intervals[j - 1] - m) / s);
+          }
+          autocorr = sum / (intervals.length - 1);
+        }
+      }
+      var entropy = this._computeTimingEntropy(this.microTimings);
+      // High entropy + low autocorrelation = artificial randomness
+      if (entropy > 0.85 && Math.abs(autocorr) < 0.1) return 0.9;
+      if (entropy < 0.15) return 0.1;
+      return entropy;
+    },
+
+    // ── Activity tracker ──
+    _recordActivity: function() {
+      var now = Date.now();
+      if (this.firstInteractionTime === null) this.firstInteractionTime = now;
+      if (now - this.lastActivityTime > 3000) this.idleGapCount++;
+      this.lastActivityTime = now;
+      if (this.microTimings.length < this.MAX_SAMPLES) this.microTimings.push(now);
+    },
+
+    // ── Event handlers ──
+    onMouseMove: function(e) {
+      this._recordActivity();
+      var point = { x: e.clientX, y: e.clientY, t: performance.now() };
+      if (this.mousePoints.length > 0) {
+        var prev = this.mousePoints[this.mousePoints.length - 1];
+        var dt = point.t - prev.t;
+        if (dt > 0) {
+          var dx = point.x - prev.x, dy = point.y - prev.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          var velocity = dist / dt;
+          if (this.mouseVelocities.length < this.MAX_SAMPLES) this.mouseVelocities.push(velocity);
+          if (this.mouseVelocities.length >= 2) {
+            var prevV = this.mouseVelocities[this.mouseVelocities.length - 2];
+            if (this.mouseAccelerations.length < this.MAX_SAMPLES) {
+              this.mouseAccelerations.push((velocity - prevV) / dt);
+            }
+          }
+          if (this.mousePoints.length >= 2) {
+            var prev2 = this.mousePoints[this.mousePoints.length - 2];
+            if (this.mouseCurvatures.length < this.MAX_SAMPLES) {
+              this.mouseCurvatures.push(this._computeCurvature(prev2, prev, point));
+            }
+          }
+        }
+      }
+      if (this.mousePoints.length < this.MAX_SAMPLES) {
+        this.mousePoints.push(point);
+      } else {
+        this.mousePoints[this.mousePoints.length - 1] = point;
+      }
+    },
+
+    onClick: function() { this._recordActivity(); this.clickCount++; },
+
+    onKeyDown: function(e) {
+      this._recordActivity();
+      if (['Shift', 'Control', 'Alt', 'Meta'].indexOf(e.key) !== -1) return;
+      var now = performance.now();
+      if (this.lastKeyUpTime > 0) {
+        var flight = now - this.lastKeyUpTime;
+        if (flight > 0 && flight < 5000 && this.flightTimes.length < this.MAX_SAMPLES) {
+          this.flightTimes.push(flight);
+        }
+      }
+      var keys = Object.keys(this.keyDownTimes);
+      if (keys.length > 0 && this.keystrokeIntervals.length < this.MAX_SAMPLES) {
+        var lastDown = 0;
+        for (var i = 0; i < keys.length; i++) {
+          if (this.keyDownTimes[keys[i]] > lastDown) lastDown = this.keyDownTimes[keys[i]];
+        }
+        var interval = now - lastDown;
+        if (interval > 0 && interval < 5000) this.keystrokeIntervals.push(interval);
+      }
+      this.keyDownTimes[e.code] = now;
+      this.keystrokeCount++;
+    },
+
+    onKeyUp: function(e) {
+      if (['Shift', 'Control', 'Alt', 'Meta'].indexOf(e.key) !== -1) return;
+      var now = performance.now();
+      var downTime = this.keyDownTimes[e.code];
+      if (downTime !== undefined) {
+        var dwell = now - downTime;
+        if (dwell > 0 && dwell < 2000 && this.keystrokeDwells.length < this.MAX_SAMPLES) {
+          this.keystrokeDwells.push(dwell);
+        }
+        delete this.keyDownTimes[e.code];
+      }
+      this.lastKeyUpTime = now;
+    },
+
+    onScroll: function() {
+      this._recordActivity();
+      this.scrollCount++;
+      var now = performance.now();
+      var scrollY = window.scrollY || document.documentElement.scrollTop;
+      var dt = now - this.lastScrollTime;
+      if (dt > 0 && this.lastScrollTime > 0) {
+        var dy = scrollY - this.lastScrollY;
+        if (this.scrollVelocities.length < this.MAX_SAMPLES) {
+          this.scrollVelocities.push(Math.abs(dy) / dt);
+        }
+        var dir = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+        if (dir !== 0 && dir !== this.lastScrollDirection && this.lastScrollDirection !== 0) {
+          this.scrollDirectionChanges++;
+        }
+        if (dir !== 0) this.lastScrollDirection = dir;
+      }
+      this.lastScrollY = scrollY;
+      this.lastScrollTime = now;
+    },
+
+    onTouchStart: function(e) {
+      this._recordActivity();
+      this.touchCount++;
+      for (var i = 0; i < e.touches.length; i++) {
+        var touch = e.touches[i];
+        if (touch.force !== undefined && touch.force > 0) this.touchPressures.push(touch.force);
+        if (touch.radiusX !== undefined) this.touchRadii.push((touch.radiusX + touch.radiusY) / 2);
+      }
+    },
+
+    onCopyPaste: function() { this._recordActivity(); this.copyPasteCount++; },
+
+    // ── Collect final signals ──
+    getSignals: function() {
+      var now = Date.now();
+      var sessionDuration = (now - this.startTime) / 1000;
+      var microIntervals = [];
+      for (var i = 1; i < this.microTimings.length; i++) {
+        microIntervals.push(this.microTimings[i] - this.microTimings[i - 1]);
+      }
+      return {
+        keystrokeIntervalAvg: this._mean(this.keystrokeIntervals),
+        keystrokeIntervalStd: this._std(this.keystrokeIntervals),
+        keystrokeDwellAvg: this._mean(this.keystrokeDwells),
+        keystrokeDwellStd: this._std(this.keystrokeDwells),
+        keystrokes: this.keystrokeCount,
+        flightTimeAvg: this._mean(this.flightTimes),
+        flightTimeStd: this._std(this.flightTimes),
+        mouseVelocityAvg: this._mean(this.mouseVelocities),
+        mouseVelocityStd: this._std(this.mouseVelocities),
+        mouseAccelerationAvg: this._mean(this.mouseAccelerations),
+        mouseAccelerationStd: this._std(this.mouseAccelerations),
+        mouseCurvatureAvg: this._mean(this.mouseCurvatures),
+        mouseMovements: this.mousePoints.length,
+        mouseClicks: this.clickCount,
+        noMouseMovement: this.mousePoints.length === 0,
+        linearMovement: this._isLinearMovement(),
+        scrollEvents: this.scrollCount,
+        scrollVelocityAvg: this._mean(this.scrollVelocities),
+        scrollDirectionChanges: this.scrollDirectionChanges,
+        touchEvents: this.touchCount,
+        touchPressureAvg: this._mean(this.touchPressures),
+        touchRadiusAvg: this._mean(this.touchRadii),
+        timeToFirstInteraction: this.firstInteractionTime
+          ? (this.firstInteractionTime - this.startTime) / 1000 : sessionDuration,
+        sessionDuration: sessionDuration,
+        idleGaps: this.idleGapCount,
+        timingEntropy: this._computeTimingEntropy(this.microTimings),
+        instantFormFill: false,
+        copyPasteEvents: this.copyPasteCount,
+        unusualSpeed: false,
+        pageViews: 1,
+        microTimingEntropy: this._computeMicroTimingEntropy(),
+        timingDistributionSkewness: this._computeSkewness(microIntervals),
+        timingDistributionKurtosis: this._computeKurtosis(microIntervals),
+      };
+    },
+
+    // ── Attach listeners ──
+    init: function() {
+      var self = this;
+      var opts = { passive: true };
+      document.addEventListener('mousemove', function(e) { self.onMouseMove(e); }, opts);
+      document.addEventListener('click', function() { self.onClick(); }, opts);
+      document.addEventListener('keydown', function(e) { self.onKeyDown(e); }, opts);
+      document.addEventListener('keyup', function(e) { self.onKeyUp(e); }, opts);
+      document.addEventListener('scroll', function() { self.onScroll(); }, { passive: true, capture: true });
+      document.addEventListener('touchstart', function(e) { self.onTouchStart(e); }, opts);
+      document.addEventListener('touchmove', function() { self._recordActivity(); }, opts);
+      document.addEventListener('copy', function() { self.onCopyPaste(); }, opts);
+      document.addEventListener('paste', function() { self.onCopyPaste(); }, opts);
+    },
+  };
+
+  // Start collecting immediately
+  behaviorCollector.init();
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // CSP / ADBLOCK DETECTION (Module 3)
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -462,6 +801,7 @@
       var requestBody = {
         fingerprint: fingerprint,
         botSignals: botSignals,
+        behavior: behaviorCollector.getSignals(),
         challenge: challenge || null,
         url: window.location.href,
         referrer: document.referrer,
@@ -569,6 +909,10 @@
 
       getFingerprint: function() {
         return collectFingerprint();
+      },
+
+      getBehavior: function() {
+        return behaviorCollector.getSignals();
       },
 
       getLogs: function() {
