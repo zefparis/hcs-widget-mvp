@@ -19,12 +19,13 @@
 
   var CONFIG = {
     apiUrl: 'https://api.hcs-u7.online',
-    version: '2.0.0',
+    version: '2.1.0',
     debug: false,
     env: 'production',
     token: null,
     tenantId: null,
     tokenPayload: null,
+    widgetPublicId: null,
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -106,19 +107,35 @@
    */
   function initConfig() {
     // Find our script tag
-    var scripts = document.querySelectorAll('script[data-tenant], script[src*="hcs-widget"]');
+    var scripts = document.querySelectorAll('script[data-widget], script[data-tenant], script[src*="hcs-widget"]');
     var scriptTag = null;
 
     for (var i = 0; i < scripts.length; i++) {
-      if (scripts[i].getAttribute('data-tenant') || 
+      if (scripts[i].getAttribute('data-widget') ||
+          scripts[i].getAttribute('data-tenant') || 
           (scripts[i].src && scripts[i].src.indexOf('hcs-widget') !== -1)) {
         scriptTag = scripts[i];
         break;
       }
     }
 
+    // Mode 0: data-widget attribute (v2.1 enterprise — widgetPublicId)
+    if (scriptTag && scriptTag.getAttribute('data-widget')) {
+      CONFIG.widgetPublicId = scriptTag.getAttribute('data-widget');
+      // data-tenant is optional alongside data-widget
+      if (scriptTag.getAttribute('data-tenant')) {
+        var tv = scriptTag.getAttribute('data-tenant');
+        if (isLegacyTenantId(tv)) {
+          CONFIG.tenantId = tv;
+        } else {
+          var p = parseToken(tv);
+          if (p) { CONFIG.token = tv; CONFIG.tokenPayload = p; CONFIG.tenantId = p.tid; }
+        }
+      }
+      debugLog('init', 'Widget public ID from data-widget');
+    }
     // Mode 1: data-tenant attribute (v2 recommended)
-    if (scriptTag && scriptTag.getAttribute('data-tenant')) {
+    else if (scriptTag && scriptTag.getAttribute('data-tenant')) {
       var tokenValue = scriptTag.getAttribute('data-tenant');
 
       if (isLegacyTenantId(tokenValue)) {
@@ -1079,10 +1096,13 @@
     // 2. Setup debug API (if authorized)
     setupDebugAPI();
 
-    // 3. Run diagnostics (non-blocking, parallel with protection)
+    // 3. Send widget ping (non-blocking, silent)
+    sendWidgetPing();
+
+    // 4. Run diagnostics (non-blocking, parallel with protection)
     var diagPromise = runDiagnostics();
 
-    // 4. Start protection
+    // 5. Start protection
     var protectFn = function() {
       protect().catch(function(e) {
         logError('Protection failed: ' + e.message);
@@ -1094,6 +1114,24 @@
     } else {
       protectFn();
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WIDGET PING (Module 6) — Silent heartbeat to backend
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function sendWidgetPing() {
+    if (!CONFIG.widgetPublicId) return;
+    try {
+      fetch(CONFIG.apiUrl + '/api/widgets/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetPublicId: CONFIG.widgetPublicId,
+          domain: window.location.hostname,
+        }),
+      }).catch(function() { /* silent */ });
+    } catch (e) { /* silent */ }
   }
 
   // Start
