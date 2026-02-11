@@ -45,15 +45,15 @@ export function assessRisk(): RiskBreakdown {
   // 3. Automation score (subset of fingerprint focused on webdriver/headless)
   let automationScore = 0;
   if (fp.webdriver) automationScore += 60;
-  if (fpResult.signals.includes('suspicious_ua')) automationScore += 40;
+  if (fpResult.signals.includes('a3')) automationScore += 40;
   automationScore = clamp(automationScore);
 
   // 4. Integrity
   const integrity = collectIntegrity();
   let integrityScore = 0;
-  if (!integrity.storageAvailable) { integrityScore += 20; reasons.push('no_storage'); }
-  if (!integrity.cookiesEnabled) { integrityScore += 15; reasons.push('no_cookies'); }
-  if (integrity.cspBlocked) { integrityScore += 10; reasons.push('csp_blocked'); }
+  if (!integrity.storageAvailable) { integrityScore += 20; reasons.push('i1'); }
+  if (!integrity.cookiesEnabled) { integrityScore += 15; reasons.push('i2'); }
+  if (integrity.cspBlocked) { integrityScore += 10; reasons.push('i3'); }
   integrityScore = clamp(integrityScore);
 
   // 5. Velocity (actions too fast)
@@ -61,7 +61,7 @@ export function assessRisk(): RiskBreakdown {
   const now = nowSec();
   if (lastAssessTime > 0 && now - lastAssessTime < 2) {
     velocityScore = 30;
-    reasons.push('rapid_assess');
+    reasons.push('v1');
   }
   lastAssessTime = now;
 

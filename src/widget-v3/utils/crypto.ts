@@ -43,3 +43,32 @@ export function maskId(id: string | null | undefined): string {
   if (!id || id.length < 8) return '***';
   return id.substring(0, 4) + '...' + id.substring(id.length - 3);
 }
+
+/**
+ * Encode a payload object into an opaque base64 string.
+ * Prevents casual inspection of request body in DevTools Network tab.
+ * NOT encryption — just obfuscation to hide field names and signal strings.
+ */
+export function encodePayload(data: unknown): string {
+  const json = JSON.stringify(data);
+  // Simple XOR obfuscation + base64 to prevent casual reading
+  const key = 0x5A; // Fixed XOR key (not secret, just obfuscation)
+  const bytes = new Uint8Array(json.length);
+  for (let i = 0; i < json.length; i++) {
+    bytes[i] = json.charCodeAt(i) ^ key;
+  }
+  // Convert to base64
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Hash a signal name to a short opaque code.
+ * Prevents attackers from reading detection strategy in payloads.
+ */
+export function hashSignal(signal: string): string {
+  return 's' + fnv1a(signal).toString(36);
+}

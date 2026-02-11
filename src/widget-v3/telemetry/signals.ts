@@ -22,25 +22,25 @@ export interface IntegritySignals {
 
 /**
  * Analyze fingerprint for automation hints.
- * Returns a score 0-100 and list of signal names.
+ * Returns a score 0-100 and list of opaque signal codes.
  */
 export function analyzeFingerprint(fp: BrowserFingerprint): BotSignals {
   const signals: string[] = [];
   let score = 0;
 
-  if (fp.webdriver) { signals.push('webdriver'); score += 50; }
-  if (fp.plugins === 0) { signals.push('no_plugins'); score += 20; }
+  if (fp.webdriver) { signals.push('a1'); score += 50; }
+  if (fp.plugins === 0) { signals.push('a2'); score += 20; }
 
-  const suspicious = ['headless', 'phantom', 'selenium', 'puppeteer', 'bot', 'crawler', 'spider'];
+  const _s = ['\x68\x65\x61\x64\x6c\x65\x73\x73', '\x70\x68\x61\x6e\x74\x6f\x6d', '\x73\x65\x6c\x65\x6e\x69\x75\x6d', '\x70\x75\x70\x70\x65\x74\x65\x65\x72', '\x62\x6f\x74', '\x63\x72\x61\x77\x6c\x65\x72', '\x73\x70\x69\x64\x65\x72'];
   const ua = fp.userAgent.toLowerCase();
-  if (suspicious.some((s) => ua.indexOf(s) !== -1)) { signals.push('suspicious_ua'); score += 40; }
+  if (_s.some((s) => ua.indexOf(s) !== -1)) { signals.push('a3'); score += 40; }
 
-  if (fp.languages.length === 0) { signals.push('no_languages'); score += 15; }
-  if (fp.hardwareConcurrency === 0 || fp.hardwareConcurrency > 32) { signals.push('abnormal_hw'); score += 10; }
-  if (!fp.canvas || fp.canvas.length < 5) { signals.push('invalid_canvas'); score += 25; }
-  if (!fp.webgl || fp.webgl.length < 5) { signals.push('invalid_webgl'); score += 20; }
-  if (!fp.cookieEnabled) { signals.push('cookies_disabled'); score += 10; }
-  if (fp.timezone === 'UTC' || fp.timezoneOffset === 0) { signals.push('utc_tz'); score += 5; }
+  if (fp.languages.length === 0) { signals.push('a4'); score += 15; }
+  if (fp.hardwareConcurrency === 0 || fp.hardwareConcurrency > 32) { signals.push('a5'); score += 10; }
+  if (!fp.canvas || fp.canvas.length < 5) { signals.push('a6'); score += 25; }
+  if (!fp.webgl || fp.webgl.length < 5) { signals.push('a7'); score += 20; }
+  if (!fp.cookieEnabled) { signals.push('a8'); score += 10; }
+  if (fp.timezone === 'UTC' || fp.timezoneOffset === 0) { signals.push('a9'); score += 5; }
 
   return { score: Math.min(100, score), signals, suspicious: score >= 50 };
 }
@@ -53,32 +53,15 @@ export function analyzeBehavior(b: BehaviorSignals): { score: number; signals: s
   const signals: string[] = [];
   let score = 0;
 
-  // No mouse movement at all
-  if (b.noMouseMovement && b.sessionDuration > 2) { signals.push('no_mouse'); score += 15; }
-
-  // Perfectly linear mouse movement (bot)
-  if (b.linearMovement) { signals.push('linear_mouse'); score += 20; }
-
-  // No keystrokes but long session
-  if (b.keystrokes === 0 && b.sessionDuration > 5) { signals.push('no_keystrokes'); score += 5; }
-
-  // Micro-timing entropy too high (artificial randomness)
-  if (b.microTimingEntropy > 0.85) { signals.push('artificial_timing'); score += 25; }
-
-  // Micro-timing entropy too low (robotic)
-  if (b.microTimingEntropy < 0.15 && b.sessionDuration > 2) { signals.push('robotic_timing'); score += 20; }
-
-  // Very fast time to first interaction (< 100ms)
-  if (b.timeToFirstInteraction < 0.1 && b.sessionDuration > 1) { signals.push('instant_interaction'); score += 15; }
-
-  // Zero idle gaps in a long session (bot doesn't pause)
-  if (b.idleGaps === 0 && b.sessionDuration > 30) { signals.push('no_idle'); score += 10; }
-
-  // Keystroke dwell too uniform (std < 5ms)
-  if (b.keystrokeDwellStd < 5 && b.keystrokes > 10) { signals.push('uniform_dwell'); score += 15; }
-
-  // Mouse curvature near zero (straight lines)
-  if (b.mouseCurvatureAvg < 0.001 && b.mouseMovements > 20) { signals.push('zero_curvature'); score += 15; }
+  if (b.noMouseMovement && b.sessionDuration > 2) { signals.push('b1'); score += 15; }
+  if (b.linearMovement) { signals.push('b2'); score += 20; }
+  if (b.keystrokes === 0 && b.sessionDuration > 5) { signals.push('b3'); score += 5; }
+  if (b.microTimingEntropy > 0.85) { signals.push('b4'); score += 25; }
+  if (b.microTimingEntropy < 0.15 && b.sessionDuration > 2) { signals.push('b5'); score += 20; }
+  if (b.timeToFirstInteraction < 0.1 && b.sessionDuration > 1) { signals.push('b6'); score += 15; }
+  if (b.idleGaps === 0 && b.sessionDuration > 30) { signals.push('b7'); score += 10; }
+  if (b.keystrokeDwellStd < 5 && b.keystrokes > 10) { signals.push('b8'); score += 15; }
+  if (b.mouseCurvatureAvg < 0.001 && b.mouseMovements > 20) { signals.push('b9'); score += 15; }
 
   return { score: Math.min(100, score), signals };
 }

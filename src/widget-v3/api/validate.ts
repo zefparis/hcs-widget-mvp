@@ -10,8 +10,9 @@ import { getSignals } from '../telemetry/behavior';
 import { collectFingerprint } from '../telemetry/fingerprint';
 import type { RiskBreakdown } from '../risk/risk-engine';
 import { getHref, getReferrer } from '../core/env';
+import { encodePayload, hashSignal, djb2 } from '../utils/crypto';
 
-interface ValidateRequest {
+interface ValidateRequestRaw {
   fingerprint: ReturnType<typeof collectFingerprint>;
   botSignals: { score: number; signals: string[] };
   behavior: ReturnType<typeof getSignals>;
@@ -21,6 +22,58 @@ interface ValidateRequest {
   token?: string;
   tenantId?: string;
   widgetPublicId?: string;
+}
+
+/**
+ * Minify field names and hash signal strings to prevent
+ * casual inspection of detection strategy in DevTools.
+ */
+function obfuscateBody(raw: ValidateRequestRaw): Record<string, unknown> {
+  const fp = raw.fingerprint;
+  return {
+    f: {
+      ua: djb2(fp.userAgent),
+      l: fp.language,
+      p: djb2(fp.platform),
+      hc: fp.hardwareConcurrency,
+      sr: fp.screenResolution,
+      cd: fp.colorDepth,
+      tz: fp.timezoneOffset,
+      wd: fp.webdriver,
+      pl: fp.plugins,
+      cv: fp.canvas,
+      gl: fp.webgl,
+      ts: fp.touchSupport,
+      ck: fp.cookieEnabled,
+    },
+    bs: {
+      s: raw.botSignals.score,
+      r: raw.botSignals.signals.map(hashSignal),
+    },
+    bh: {
+      nm: raw.behavior.noMouseMovement,
+      lm: raw.behavior.linearMovement,
+      ks: raw.behavior.keystrokes,
+      mt: Math.round(raw.behavior.microTimingEntropy * 100),
+      ti: Math.round(raw.behavior.timeToFirstInteraction * 100),
+      ig: raw.behavior.idleGaps,
+      sd: Math.round(raw.behavior.sessionDuration),
+      mc: Math.round(raw.behavior.mouseCurvatureAvg * 1000),
+      mm: raw.behavior.mouseMovements,
+    },
+    rb: {
+      t: Math.round(raw.riskBreakdown.total),
+      c: Object.fromEntries(
+        Object.entries(raw.riskBreakdown.components).map(([k, v]) => [k[0], Math.round(v as number)])
+      ),
+      r: raw.riskBreakdown.reasons.map(hashSignal),
+    },
+    u: djb2(raw.url),
+    rf: djb2(raw.referrer),
+    ...(raw.token ? { tk: raw.token } : {}),
+    ...(raw.tenantId ? { ti: raw.tenantId } : {}),
+    ...(raw.widgetPublicId ? { wp: raw.widgetPublicId } : {}),
+  };
 }
 
 interface ValidateResponse {
@@ -41,8 +94,8 @@ export async function validate(clientRisk: RiskBreakdown): Promise<ValidationRes
   const cfg = state.config;
   const timeout = state.remoteConfig?.timeouts?.validateMs ?? 1200;
 
-  // Build request body
-  const body: ValidateRequest = {
+  // Build raw request body
+  const raw: ValidateRequestRaw = {
     fingerprint: collectFingerprint(),
     botSignals: {
       score: clientRisk.components.fingerprint,
@@ -56,18 +109,22 @@ export async function validate(clientRisk: RiskBreakdown): Promise<ValidationRes
 
   // Auth: signed token (v2+) or raw tenantId (legacy)
   if (cfg.token) {
-    body.token = cfg.token;
+    raw.token = cfg.token;
   } else if (cfg.tenantId) {
-    body.tenantId = cfg.tenantId;
+    raw.tenantId = cfg.tenantId;
   }
 
   if (cfg.widgetPublicId) {
-    body.widgetPublicId = cfg.widgetPublicId;
+    raw.widgetPublicId = cfg.widgetPublicId;
   }
+
+  // Obfuscate: minify field names + hash signals + encode as opaque payload
+  const obfuscated = obfuscateBody(raw);
+  const encoded = encodePayload(obfuscated);
 
   const result = await safeFetch<ValidateResponse>('/widget/validate', {
     method: 'POST',
-    body,
+    body: { _e: encoded, _v: 3 },
     timeoutMs: timeout,
   });
 
