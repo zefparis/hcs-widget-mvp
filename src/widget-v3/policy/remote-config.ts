@@ -27,9 +27,9 @@ export interface RemoteConfig {
 export const SAFE_DEFAULTS: RemoteConfig = {
   mode: 'adaptive',
   thresholds: { ...DEFAULT_THRESHOLDS },
-  softActions: ['pow-lite', 'js-attestation', 'silent-retry'],
+  softActions: ['pow-lite', 'js-attestation', 'silent-retry', 'token-refresh'],
   challengeActions: ['cognitive-lite'],
-  bunkerPolicy: { enabled: false, ttlSeconds: 900 },
+  bunkerPolicy: { enabled: true, ttlSeconds: 900 },
   sampling: { telemetry: 0.25, fullSignals: 0.10 },
   privacy: { maskPII: true },
   timeouts: { configMs: 800, validateMs: 1200, pingMs: 400 },

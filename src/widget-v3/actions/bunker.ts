@@ -129,3 +129,12 @@ export async function executeBunker(): Promise<void> {
     appendToBody(overlay);
   });
 }
+
+/** Force-clear bunker whitelist (called on bunker exit / mode change) */
+export function clearBunkerWhitelist(): void {
+  if (!supportsSessionStorage()) return;
+  try {
+    sessionStorage.removeItem(BUNKER_STORAGE_KEY);
+    log('bunker', 'Whitelist cleared (bunker exit)');
+  } catch { /* ignore */ }
+}

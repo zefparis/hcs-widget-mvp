@@ -124,10 +124,15 @@ function exposeStatus(): void {
 }
 
 /**
- * Debug API — only exposed if debug mode is authorized.
+ * Debug API — exposed if debug mode is authorized OR window.__HCS_DEBUG__ === true.
  * No methods that allow forcing revalidation from attacker console.
  */
 function setupDebugAPI(): void {
+  // Support window.__HCS_DEBUG__ = true as a trigger (set before widget loads)
+  if ((window as any).__HCS_DEBUG__ === true) {
+    setDebug(true);
+  }
+
   if (!isDebug()) return;
 
   // Only allow debug if token explicitly allows it, or legacy mode with data-debug
@@ -152,6 +157,15 @@ function setupDebugAPI(): void {
     getDecision: () => state.lastDecision,
     getConfig: () => state.remoteConfig ? { ...state.remoteConfig } : null,
     isDegraded: () => state.degraded,
+    getStatus: () => ({
+      riskScore: Math.round(state.emaScore),
+      decision: state.lastDecision,
+      thresholds: state.remoteConfig?.thresholds ?? null,
+      mode: state.remoteConfig?.mode ?? 'unknown',
+      bunkerActive: state.bunkerActive,
+      degraded: state.degraded,
+      sessionValidated: state.sessionValidated,
+    }),
   });
 
   log('debug', 'Debug API exposed on window.__HCS_DEBUG__');

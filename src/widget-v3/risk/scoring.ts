@@ -43,3 +43,23 @@ export function ema(prev: number, curr: number, alpha: number = 0.3): number {
 export function combineRisk(clientRisk: number, serverRisk: number): number {
   return clamp(clientRisk * 0.4 + serverRisk * 0.6);
 }
+
+/**
+ * Dev mode tolerance: reduce risk score in development environments.
+ * Avoids false positives from localhost, devtools, empty referrer.
+ */
+export function applyDevTolerance(score: number): number {
+  if (typeof window === 'undefined') return score;
+  const hostname = window.location?.hostname || '';
+  const referrer = document.referrer || '';
+
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+  const isEmptyReferrer = referrer === '';
+  const isDevtools = !!(window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__
+    || typeof (window as any).__VUE_DEVTOOLS_GLOBAL_HOOK__ !== 'undefined';
+
+  if (isLocalhost || isDevtools || isEmptyReferrer) {
+    return clamp(score * 0.6);
+  }
+  return score;
+}

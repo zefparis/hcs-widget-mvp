@@ -48,9 +48,11 @@ export interface WidgetState {
   lastSeen: number;
   degraded: boolean;
   ready: boolean;
+  bunkerActive: boolean;
+  emaScore: number;
 }
 
-const DEFAULT_API_URL = 'https://api.hcs-u7.online';
+const DEFAULT_API_URL = 'https://api.hcs-u7.org';
 
 export const state: WidgetState = {
   config: {
@@ -72,4 +74,6 @@ export const state: WidgetState = {
   lastSeen: 0,
   degraded: false,
   ready: false,
+  bunkerActive: false,
+  emaScore: 0,
 };

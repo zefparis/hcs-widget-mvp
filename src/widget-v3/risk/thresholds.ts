@@ -11,8 +11,8 @@ export interface Thresholds {
 }
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
-  allow: 35,
-  soft: 60,
+  allow: 30,
+  soft: 55,
   challenge: 80,
-  bunker: 92,
+  bunker: 95,
 };
