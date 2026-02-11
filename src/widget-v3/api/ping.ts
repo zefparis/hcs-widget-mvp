@@ -24,11 +24,26 @@ export async function sendPing(): Promise<void> {
 
   const timeout = state.remoteConfig?.timeouts?.pingMs ?? 400;
 
-  await safeFetch('/api/widgets/ping', {
+  const ok = await safeFetch('/api/widgets/ping', {
     method: 'POST',
     body: { widgetPublicId: wid },
     timeoutMs: timeout,
   });
+
+  if (!ok && typeof document !== 'undefined') {
+    try {
+      const url =
+        state.config.apiUrl +
+        '/api/widgets/ping.gif?widgetPublicId=' +
+        encodeURIComponent(wid) +
+        '&_=' +
+        Date.now();
+      const img = new Image();
+      img.src = url;
+    } catch {
+      // silent
+    }
+  }
 
   log('ping', 'Sent');
 }
