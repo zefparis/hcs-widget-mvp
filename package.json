@@ -1,12 +1,15 @@
 {
   "name": "hcs-widget-mvp",
-  "version": "0.1.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:widget": "node scripts/build-widget.mjs",
+    "build:widget:watch": "node scripts/build-widget.mjs --watch",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:widget": "node scripts/test-widget.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -22,6 +25,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.27.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "javascript-obfuscator": "^5.2.1",

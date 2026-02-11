@@ -865,7 +865,33 @@
    * Block access
    */
   function blockAccess(reason) {
-    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9;font-family:system-ui,-apple-system,sans-serif;"><div style="text-align:center;max-width:500px;padding:40px;"><div style="font-size:64px;margin-bottom:20px;">🛡️</div><h1 style="color:#1e293b;margin:0 0 10px 0;">Accès Bloqué</h1><p style="color:#64748b;margin:0 0 20px 0;">Votre accès a été bloqué par HCS-U7 Protection.</p><p style="color:#94a3b8;font-size:14px;">Raison: ' + reason + '</p><p style="color:#94a3b8;font-size:12px;margin-top:30px;">Protégé par <strong>HCS-U7</strong></p></div></div>';
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9;font-family:system-ui,-apple-system,sans-serif;';
+    var inner = document.createElement('div');
+    inner.style.cssText = 'text-align:center;max-width:500px;padding:40px;';
+    var icon = document.createElement('div');
+    icon.style.cssText = 'font-size:64px;margin-bottom:20px;';
+    icon.textContent = '\uD83D\uDEE1\uFE0F';
+    var h1 = document.createElement('h1');
+    h1.style.cssText = 'color:#1e293b;margin:0 0 10px 0;';
+    h1.textContent = 'Acc\u00e8s Bloqu\u00e9';
+    var p1 = document.createElement('p');
+    p1.style.cssText = 'color:#64748b;margin:0 0 20px 0;';
+    p1.textContent = 'Votre acc\u00e8s a \u00e9t\u00e9 bloqu\u00e9 par HCS-U7 Protection.';
+    var p2 = document.createElement('p');
+    p2.style.cssText = 'color:#94a3b8;font-size:14px;';
+    p2.textContent = 'Raison: ' + (typeof reason === 'string' ? reason : 'Unknown');
+    var p3 = document.createElement('p');
+    p3.style.cssText = 'color:#94a3b8;font-size:12px;margin-top:30px;';
+    p3.textContent = 'Prot\u00e9g\u00e9 par HCS-U7';
+    inner.appendChild(icon);
+    inner.appendChild(h1);
+    inner.appendChild(p1);
+    inner.appendChild(p2);
+    inner.appendChild(p3);
+    wrapper.appendChild(inner);
+    document.body.innerHTML = '';
+    document.body.appendChild(wrapper);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1128,7 +1154,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           widgetPublicId: CONFIG.widgetPublicId,
-          domain: window.location.hostname,
         }),
       }).catch(function() { /* silent */ });
     } catch (e) { /* silent */ }

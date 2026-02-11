@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HCS-U7 Widget v3 — Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      color: #e2e8f0;
+      padding: 40px 20px;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .subtitle { color: #94a3b8; margin-bottom: 32px; font-size: 15px; }
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(8px);
+    }
+    .card h2 { font-size: 18px; margin-bottom: 12px; color: #f1f5f9; }
+    .card p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+    pre {
+      background: #0f172a;
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #a5d6ff;
+    }
+    code { font-family: 'Fira Code', 'Consolas', 'Monaco', monospace; }
+    .badge {
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .badge.green { background: #10b981; }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      font-size: 14px;
+    }
+    .status-row:last-child { border-bottom: none; }
+    .status-label { color: #94a3b8; }
+    .status-value { color: #f1f5f9; font-weight: 500; }
+    .btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #2563eb; }
+    .footer { text-align: center; margin-top: 40px; color: #475569; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>HCS-U7 Widget v3 <span class="badge green">Enterprise</span></h1>
+    <p class="subtitle">Adaptive Engine — Risk-based, zero friction by default, progressive escalation on anomaly only.</p>
+
+    <div class="card">
+      <h2>Widget Status</h2>
+      <div id="status-panel">
+        <div class="status-row">
+          <span class="status-label">Ready</span>
+          <span class="status-value" id="s-ready">Loading...</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Decision</span>
+          <span class="status-value" id="s-decision">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Version</span>
+          <span class="status-value" id="s-version">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Degraded</span>
+          <span class="status-value" id="s-degraded">—</span>
+        </div>
+      </div>
+      <br>
+      <button class="btn" onclick="refreshStatus()">Refresh Status</button>
+    </div>
+
+    <div class="card">
+      <h2>Integration Snippet <span class="badge">v3</span></h2>
+      <p>Add this to your site's HTML. Replace <code>YOUR_WIDGET_PUBLIC_ID</code> with your actual widget public ID from the dashboard.</p>
+      <pre><code>&lt;script
+  src="https://widget.hcs-u7.online/v3/hcs-widget.js"
+  data-widget="YOUR_WIDGET_PUBLIC_ID"
+  async&gt;
+&lt;/script&gt;</code></pre>
+    </div>
+
+    <div class="card">
+      <h2>How It Works</h2>
+      <p><strong>Default UX = invisible.</strong> Normal humans never see anything. The widget silently collects behavioral signals and validates with the backend.</p>
+      <p><strong>Progressive escalation:</strong></p>
+      <pre><code>Score 0-34   → ALLOW      (invisible)
+Score 35-59  → SOFT       (PoW-lite, JS attestation — invisible)
+Score 60-79  → CHALLENGE  (minimal slider challenge)
+Score 80-91  → HARD       (strict slider challenge)
+Score 92+    → BUNKER     (full verification gate)
+              or BLOCK    (if bunker disabled)</code></pre>
+      <p>Thresholds are configurable per-tenant via remote config.</p>
+    </div>
+
+    <div class="card">
+      <h2>Modes</h2>
+      <p><strong>monitor</strong> — Observe only, never block. Good for initial deployment.</p>
+      <p><strong>adaptive</strong> — Default. Progressive escalation based on risk score.</p>
+      <p><strong>enforce</strong> — Strict mode. Lower thresholds, faster escalation.</p>
+    </div>
+
+    <p class="footer">HCS-U7 Widget v3.0.0 — Patents Pending FR2514274 | FR2514546<br>&copy; 2025-2026 Benjamin BARRERE / IA SOLUTION</p>
+  </div>
+
+  <!-- Load HCS-U7 Widget v3 with debug mode -->
+  <script
+    src="/widget/v3/hcs-widget.js"
+    data-widget="demo_widget_public_id"
+    data-debug="true"
+    async>
+  </script>
+
+  <script>
+    function refreshStatus() {
+      var status = window.HCS_STATUS || {};
+      document.getElementById('s-ready').textContent = status.ready ? 'Yes' : 'No';
+      document.getElementById('s-decision').textContent = status.lastDecision || 'pending';
+      document.getElementById('s-version').textContent = status.version || '—';
+      document.getElementById('s-degraded').textContent = status.degraded ? 'Yes (API unreachable)' : 'No';
+    }
+
+    // Auto-refresh after widget loads
+    setTimeout(refreshStatus, 2000);
+    setTimeout(refreshStatus, 5000);
+  </script>
+</body>
+</html>
