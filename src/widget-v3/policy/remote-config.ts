@@ -98,8 +98,9 @@ export async function fetchRemoteConfig(): Promise<RemoteConfig> {
 
   // 3. Fetch from backend
   const wid = state.config.widgetPublicId;
-  if (!wid) {
-    log('config', 'No widgetPublicId — using safe defaults');
+  const tid = state.config.tenantId;
+  if (!wid && !tid) {
+    log('config', 'No widgetPublicId or tenantId — using safe defaults');
     return SAFE_DEFAULTS;
   }
 
@@ -109,7 +110,11 @@ export async function fetchRemoteConfig(): Promise<RemoteConfig> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
 
-    const url = state.config.apiUrl + '/api/widgets/config?widgetPublicId=' + encodeURIComponent(wid);
+    // Prefer widgetPublicId, fall back to tenantId (legacy Worker injection)
+    const qp = wid
+      ? 'widgetPublicId=' + encodeURIComponent(wid)
+      : 'tenantId=' + encodeURIComponent(tid!);
+    const url = state.config.apiUrl + '/api/widgets/config?' + qp;
     const res = await fetch(url, {
       method: 'GET',
       signal: controller.signal,
@@ -119,19 +124,27 @@ export async function fetchRemoteConfig(): Promise<RemoteConfig> {
 
     if (!res.ok) throw new Error('HTTP ' + res.status);
 
-    const data = await res.json() as RemoteConfig;
+    const data = await res.json() as any;
+
+    // If backend returned widgetPublicId, store it for ping
+    if (data.widgetPublicId && !state.config.widgetPublicId) {
+      state.config.widgetPublicId = data.widgetPublicId;
+      log('config', 'Resolved widgetPublicId from backend: ' + data.widgetPublicId.slice(0, 6) + '...');
+    }
+
+    const cfg = data.config || data;
 
     // Validate essential fields
-    if (!data.thresholds || typeof data.mode !== 'string') {
+    if (!cfg.thresholds || typeof cfg.mode !== 'string') {
       throw new Error('Invalid config shape');
     }
 
-    const entry: CacheEntry = { config: data, fetchedAt: Date.now() };
+    const entry: CacheEntry = { config: cfg, fetchedAt: Date.now() };
     memoryCache = entry;
     writeLocalCache(entry);
 
-    log('config', 'Fetched remote config (mode=' + data.mode + ')');
-    return data;
+    log('config', 'Fetched remote config (mode=' + cfg.mode + ')');
+    return cfg;
 
   } catch (err: any) {
     logError('config_fetch_failed: ' + (err?.message || 'unknown'));
