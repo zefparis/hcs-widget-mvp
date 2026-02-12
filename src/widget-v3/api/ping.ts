@@ -22,7 +22,7 @@ export async function sendPing(): Promise<void> {
     return;
   }
 
-  const timeout = state.remoteConfig?.timeouts?.pingMs ?? 400;
+  const timeout = state.remoteConfig?.timeouts?.pingMs ?? 3000;
 
   const ok = await safeFetch('/api/widgets/ping', {
     method: 'POST',

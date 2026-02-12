@@ -1,0 +1,14 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<title>HCS Widget Test</title>
+<script src="https://hcs-widget-mvp.vercel.app/widget/v3/hcs-widget.js" async data-widget="qPtZJHNXf9CuP2LCLHNX8nkOlaFWq8tC" data-debug="true"></script>
+</head>
+<body>
+<h1>HCS Widget Test Page</h1>
+<p>Open console (F12) and check window.HCS_STATUS</p>
+<button onclick="document.getElementById('out').textContent = JSON.stringify(window.HCS_STATUS || 'undefined', null, 2)">Check HCS_STATUS</button>
+<button onclick="document.getElementById('out').textContent = JSON.stringify(window.__HCS_DEBUG__ || 'no debug', null, 2)">Check __HCS_DEBUG__</button>
+<pre id="out" style="background:#222;color:#0f0;padding:20px;font-size:14px;">Click a button above...</pre>
+</body>
+</html>
