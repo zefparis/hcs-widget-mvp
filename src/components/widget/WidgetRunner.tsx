@@ -40,16 +40,34 @@ export function WidgetRunner({ widgetId }: Props) {
   const [showCloseFallback, setShowCloseFallback] = useState(false);
 
   const postToHosts = (payload: unknown) => {
+    // SECURITY: Derive allowed origin from widget config siteUrl (tenant-specific)
+    // Fallback chain: config.siteUrl → document.referrer → BLOCK (no wildcard)
+    let targetOrigin: string | null = null;
+    try {
+      if (config?.siteUrl) {
+        targetOrigin = new URL(config.siteUrl).origin;
+      } else if (document.referrer) {
+        targetOrigin = new URL(document.referrer).origin;
+      }
+    } catch {
+      targetOrigin = null;
+    }
+
+    if (!targetOrigin) {
+      // SECURITY: No valid origin — refuse to send message (no '*' fallback)
+      return;
+    }
+
     try {
       if (window.parent && window.parent !== window) {
-        window.parent.postMessage(payload, '*');
+        window.parent.postMessage(payload, targetOrigin);
       }
     } catch {
       // ignore
     }
     try {
       if (window.opener && window.opener !== window) {
-        window.opener.postMessage(payload, '*');
+        window.opener.postMessage(payload, targetOrigin);
       }
     } catch {
       // ignore

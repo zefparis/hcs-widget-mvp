@@ -129,13 +129,13 @@ export async function validate(clientRisk: RiskBreakdown): Promise<ValidationRes
   });
 
   if (!result) {
-    // API unreachable → degraded mode
-    log('validate', 'Backend unreachable — degraded mode');
+    // SECURITY: fail-closed — backend unreachable → challenge, never auto-allow
+    log('validate', 'Backend unreachable — fail-closed, forcing challenge');
     state.degraded = true;
     return {
-      action: 'allow',
+      action: 'challenge',
       reason: 'api_unreachable',
-      score: 0,
+      score: 50,
     };
   }
 

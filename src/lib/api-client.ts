@@ -23,6 +23,10 @@ export interface ValidationResponse {
   sessionToken?: string;
 }
 
+// SECURITY: Cache last successful backend decision (TTL-based)
+const DECISION_CACHE_TTL_MS = 60_000; // 1 minute
+let lastValidDecision: { response: ValidationResponse; expiry: number } | null = null;
+
 export class HCSApiClient {
   private apiUrl: string;
   private tenantId: string;
@@ -34,6 +38,7 @@ export class HCSApiClient {
 
   /**
    * Valide une requête auprès du backend
+   * SECURITY: fail-closed — backend down → challenge (never auto-allow)
    */
   async validate(
     fingerprint: BrowserFingerprint,
@@ -41,6 +46,9 @@ export class HCSApiClient {
     challenge?: ChallengeResult
   ): Promise<ValidationResponse> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5_000);
+
       const request: ValidationRequest = {
         tenantId: this.tenantId,
         fingerprint,
@@ -57,22 +65,36 @@ export class HCSApiClient {
           'X-HCS-Widget-Version': '1.0.0',
         },
         body: JSON.stringify(request),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
 
       const data = await response.json();
+
+      // Cache successful decisions for short-lived fallback
+      if (data.action === 'allow') {
+        lastValidDecision = { response: data, expiry: Date.now() + DECISION_CACHE_TTL_MS };
+      }
+
       return data;
     } catch (error) {
       console.error('[HCS-U7] API validation error:', error);
-      // En cas d'erreur API, on laisse passer (fail-open)
+
+      // SECURITY: fail-closed — if cached allow exists and not expired, use it
+      if (lastValidDecision && Date.now() < lastValidDecision.expiry) {
+        return { ...lastValidDecision.response, reason: 'cached_decision' };
+      }
+
+      // No cache → force challenge (never auto-allow)
       return {
-        valid: true,
+        valid: false,
         score: 0,
-        action: 'allow',
-        reason: 'api_error',
+        action: 'challenge',
+        reason: 'api_unavailable',
       };
     }
   }
