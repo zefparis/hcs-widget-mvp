@@ -56,11 +56,8 @@ export function WidgetRunner({ widgetId }: Props) {
     }
   };
 
-  // Détection DevTools en production (DÉSACTIVÉ POUR TESTS)
+  // Détection DevTools en production
   useEffect(() => {
-    // Temporairement désactivé pour permettre les tests avec DevTools
-    // TODO: Réactiver en production finale
-    /*
     if (process.env.NODE_ENV === 'production') {
       const cleanup = detectDevTools(() => {
         setDevToolsDetected(true);
@@ -73,7 +70,6 @@ export function WidgetRunner({ widgetId }: Props) {
       });
       return cleanup;
     }
-    */
   }, [widgetId]);
 
   useEffect(() => {

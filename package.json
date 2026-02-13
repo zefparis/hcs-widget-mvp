@@ -9,7 +9,9 @@
     "build:widget:watch": "node scripts/build-widget.mjs --watch",
     "start": "next start",
     "lint": "eslint",
-    "test:widget": "node scripts/test-widget.mjs"
+    "test:widget": "node scripts/test-widget.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -22,16 +24,21 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.1.4",
     "esbuild": "^0.27.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "javascript-obfuscator": "^5.2.1",
+    "jsdom": "^28.0.0",
     "tailwindcss": "^4",
     "terser-webpack-plugin": "^5.3.16",
     "typescript": "^5",
+    "vitest": "^4.0.18",
     "webpack-obfuscator": "^3.6.0"
   }
 }
