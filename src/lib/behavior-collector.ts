@@ -46,6 +46,22 @@ export interface BehaviorSignals {
   touchEvents: number;
   touchPressureAvg: number;
   touchRadiusAvg: number;
+  touchVelocityAvg: number;
+  touchVelocityStd: number;
+  touchAccelerationAvg: number;
+  touchAccelerationStd: number;
+  touchCurvatureAvg: number;
+  touchHoldDurationAvg: number;
+  touchHoldDurationStd: number;
+
+  // Device motion (gyroscope / accelerometer)
+  gyroAlphaStd: number;
+  gyroBetaStd: number;
+  gyroGammaStd: number;
+  accelXStd: number;
+  accelYStd: number;
+  accelZStd: number;
+  deviceMotionEvents: number;
 
   // Timing analysis
   timeToFirstInteraction: number;
@@ -117,6 +133,21 @@ export class BehaviorCollector {
   private touchCount: number = 0;
   private touchPressures: number[] = [];
   private touchRadii: number[] = [];
+  private touchPoints: MousePoint[] = [];
+  private touchVelocities: number[] = [];
+  private touchAccelerations: number[] = [];
+  private touchCurvatures: number[] = [];
+  private touchHoldDurations: number[] = [];
+  private touchStartTimes: Map<number, number> = new Map();
+
+  // Device motion tracking (gyroscope + accelerometer)
+  private gyroAlpha: number[] = [];
+  private gyroBeta: number[] = [];
+  private gyroGamma: number[] = [];
+  private accelX: number[] = [];
+  private accelY: number[] = [];
+  private accelZ: number[] = [];
+  private deviceMotionCount: number = 0;
 
   // Form tracking
   private copyPasteCount: number = 0;
@@ -148,6 +179,9 @@ export class BehaviorCollector {
     this.addListener(document, 'scroll', this.onScroll.bind(this), true);
     this.addListener(document, 'touchstart', this.onTouchStart.bind(this));
     this.addListener(document, 'touchmove', this.onTouchMove.bind(this));
+    this.addListener(document, 'touchend', this.onTouchEnd.bind(this));
+    this.addListener(window, 'devicemotion', this.onDeviceMotion.bind(this));
+    this.addListener(window, 'deviceorientation', this.onDeviceOrientation.bind(this));
     this.addListener(document, 'copy', this.onCopyPaste.bind(this));
     this.addListener(document, 'paste', this.onCopyPaste.bind(this));
     this.addListener(document, 'focus', this.onFocus.bind(this), true);
@@ -352,6 +386,7 @@ export class BehaviorCollector {
     this.recordActivity();
     this.touchCount++;
 
+    const now = performance.now();
     for (let i = 0; i < te.touches.length; i++) {
       const touch = te.touches[i] as any;
       if (touch.force !== undefined && touch.force > 0) {
@@ -360,11 +395,113 @@ export class BehaviorCollector {
       if (touch.radiusX !== undefined) {
         this.touchRadii.push((touch.radiusX + touch.radiusY) / 2);
       }
+      // Record start time for hold duration measurement
+      this.touchStartTimes.set(touch.identifier, now);
     }
   }
 
   private onTouchMove(e: Event): void {
+    const te = e as TouchEvent;
     this.recordActivity();
+
+    // Track touch trajectory (velocity, acceleration, curvature) — mirrors mouse dynamics
+    for (let i = 0; i < te.changedTouches.length; i++) {
+      const touch = te.changedTouches[i];
+      const point: MousePoint = { x: touch.clientX, y: touch.clientY, t: performance.now() };
+
+      if (this.touchPoints.length > 0) {
+        const prev = this.touchPoints[this.touchPoints.length - 1];
+        const dt = point.t - prev.t;
+
+        if (dt > 0) {
+          const dx = point.x - prev.x;
+          const dy = point.y - prev.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const velocity = dist / dt; // px/ms
+
+          if (this.touchVelocities.length < BehaviorCollector.MAX_SAMPLES) {
+            this.touchVelocities.push(velocity);
+          }
+
+          // Acceleration
+          if (this.touchVelocities.length >= 2) {
+            const prevVelocity = this.touchVelocities[this.touchVelocities.length - 2];
+            const acceleration = (velocity - prevVelocity) / dt;
+            if (this.touchAccelerations.length < BehaviorCollector.MAX_SAMPLES) {
+              this.touchAccelerations.push(acceleration);
+            }
+          }
+
+          // Curvature (requires 3 points)
+          if (this.touchPoints.length >= 2) {
+            const prev2 = this.touchPoints[this.touchPoints.length - 2];
+            const curv = this.computeCurvature(prev2, prev, point);
+            if (this.touchCurvatures.length < BehaviorCollector.MAX_SAMPLES) {
+              this.touchCurvatures.push(curv);
+            }
+          }
+        }
+      }
+
+      if (this.touchPoints.length < BehaviorCollector.MAX_SAMPLES) {
+        this.touchPoints.push(point);
+      } else {
+        this.touchPoints[this.touchPoints.length - 1] = point;
+      }
+    }
+  }
+
+  private onTouchEnd(e: Event): void {
+    const te = e as TouchEvent;
+    const now = performance.now();
+
+    // Measure hold duration (tap-down → tap-up)
+    // Human: ~80-200ms for taps, 300-1000ms for holds
+    // Bot: either too fast (<30ms) or too regular (low std)
+    for (let i = 0; i < te.changedTouches.length; i++) {
+      const touch = te.changedTouches[i];
+      const startTime = this.touchStartTimes.get(touch.identifier);
+      if (startTime !== undefined) {
+        const duration = now - startTime;
+        if (duration > 0 && duration < 10000 && this.touchHoldDurations.length < BehaviorCollector.MAX_SAMPLES) {
+          this.touchHoldDurations.push(duration);
+        }
+        this.touchStartTimes.delete(touch.identifier);
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // DEVICE MOTION (GYROSCOPE + ACCELEROMETER)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Captures accelerometer data from the device.
+   * Humans holding a phone produce natural micro-tremors (std 0.01-0.5).
+   * Bots in emulators produce either zero motion or synthetic patterns.
+   */
+  private onDeviceMotion(e: Event): void {
+    const me = e as DeviceMotionEvent;
+    this.deviceMotionCount++;
+
+    const accel = me.accelerationIncludingGravity;
+    if (accel) {
+      if (accel.x !== null && this.accelX.length < BehaviorCollector.MAX_SAMPLES) this.accelX.push(accel.x);
+      if (accel.y !== null && this.accelY.length < BehaviorCollector.MAX_SAMPLES) this.accelY.push(accel.y);
+      if (accel.z !== null && this.accelZ.length < BehaviorCollector.MAX_SAMPLES) this.accelZ.push(accel.z);
+    }
+  }
+
+  /**
+   * Captures gyroscope orientation data.
+   * Alpha = compass heading, Beta = front-back tilt, Gamma = left-right tilt.
+   * Natural human hand tremor produces characteristic std deviations.
+   */
+  private onDeviceOrientation(e: Event): void {
+    const oe = e as DeviceOrientationEvent;
+    if (oe.alpha !== null && this.gyroAlpha.length < BehaviorCollector.MAX_SAMPLES) this.gyroAlpha.push(oe.alpha);
+    if (oe.beta !== null && this.gyroBeta.length < BehaviorCollector.MAX_SAMPLES) this.gyroBeta.push(oe.beta);
+    if (oe.gamma !== null && this.gyroGamma.length < BehaviorCollector.MAX_SAMPLES) this.gyroGamma.push(oe.gamma);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -605,6 +742,22 @@ export class BehaviorCollector {
       touchEvents: this.touchCount,
       touchPressureAvg: this.mean(this.touchPressures),
       touchRadiusAvg: this.mean(this.touchRadii),
+      touchVelocityAvg: this.mean(this.touchVelocities),
+      touchVelocityStd: this.std(this.touchVelocities),
+      touchAccelerationAvg: this.mean(this.touchAccelerations),
+      touchAccelerationStd: this.std(this.touchAccelerations),
+      touchCurvatureAvg: this.mean(this.touchCurvatures),
+      touchHoldDurationAvg: this.mean(this.touchHoldDurations),
+      touchHoldDurationStd: this.std(this.touchHoldDurations),
+
+      // Device motion (gyroscope + accelerometer)
+      gyroAlphaStd: this.std(this.gyroAlpha),
+      gyroBetaStd: this.std(this.gyroBeta),
+      gyroGammaStd: this.std(this.gyroGamma),
+      accelXStd: this.std(this.accelX),
+      accelYStd: this.std(this.accelY),
+      accelZStd: this.std(this.accelZ),
+      deviceMotionEvents: this.deviceMotionCount,
 
       // Timing analysis
       timeToFirstInteraction: this.firstInteractionTime

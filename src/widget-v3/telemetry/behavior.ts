@@ -34,6 +34,21 @@ export interface BehaviorSignals {
   touchEvents: number;
   touchPressureAvg: number;
   touchRadiusAvg: number;
+  touchVelocityAvg: number;
+  touchVelocityStd: number;
+  touchAccelerationAvg: number;
+  touchAccelerationStd: number;
+  touchCurvatureAvg: number;
+  touchHoldDurationAvg: number;
+  touchHoldDurationStd: number;
+
+  gyroAlphaStd: number;
+  gyroBetaStd: number;
+  gyroGammaStd: number;
+  accelXStd: number;
+  accelYStd: number;
+  accelZStd: number;
+  deviceMotionEvents: number;
 
   timeToFirstInteraction: number;
   sessionDuration: number;
@@ -81,6 +96,20 @@ let lastScrollDir = 0;
 let touchCount = 0;
 const touchPressures: number[] = [];
 const touchRadii: number[] = [];
+const touchPoints: Point[] = [];
+const touchVelocities: number[] = [];
+const touchAccelerations: number[] = [];
+const touchCurvatures: number[] = [];
+const touchHoldDurations: number[] = [];
+const touchStartTimes: Map<number, number> = new Map();
+
+const gyroAlpha: number[] = [];
+const gyroBeta: number[] = [];
+const gyroGamma: number[] = [];
+const accelX: number[] = [];
+const accelY: number[] = [];
+const accelZ: number[] = [];
+let deviceMotionCount = 0;
 
 let copyPasteCount = 0;
 const microTimings: number[] = [];
@@ -270,11 +299,70 @@ function onScroll(): void {
 function onTouchStart(e: TouchEvent): void {
   recordActivity();
   touchCount++;
+  const now = performance.now();
   for (let i = 0; i < e.touches.length; i++) {
     const t = e.touches[i] as any;
     if (t.force !== undefined && t.force > 0) touchPressures.push(t.force);
     if (t.radiusX !== undefined) touchRadii.push((t.radiusX + t.radiusY) / 2);
+    touchStartTimes.set(t.identifier, now);
   }
+}
+
+function onTouchMove(e: TouchEvent): void {
+  recordActivity();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const t = e.changedTouches[i];
+    const pt: Point = { x: t.clientX, y: t.clientY, t: performance.now() };
+    if (touchPoints.length > 0) {
+      const prev = touchPoints[touchPoints.length - 1];
+      const dt = pt.t - prev.t;
+      if (dt > 0) {
+        const dx = pt.x - prev.x, dy = pt.y - prev.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const vel = dist / dt;
+        if (touchVelocities.length < MAX) touchVelocities.push(vel);
+        if (touchVelocities.length >= 2) {
+          const prevV = touchVelocities[touchVelocities.length - 2];
+          if (touchAccelerations.length < MAX) touchAccelerations.push((vel - prevV) / dt);
+        }
+        if (touchPoints.length >= 2) {
+          const prev2 = touchPoints[touchPoints.length - 2];
+          if (touchCurvatures.length < MAX) touchCurvatures.push(curvature(prev2, prev, pt));
+        }
+      }
+    }
+    if (touchPoints.length < MAX) touchPoints.push(pt);
+    else touchPoints[touchPoints.length - 1] = pt;
+  }
+}
+
+function onTouchEnd(e: TouchEvent): void {
+  const now = performance.now();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const t = e.changedTouches[i];
+    const start = touchStartTimes.get(t.identifier);
+    if (start !== undefined) {
+      const dur = now - start;
+      if (dur > 0 && dur < 10000 && touchHoldDurations.length < MAX) touchHoldDurations.push(dur);
+      touchStartTimes.delete(t.identifier);
+    }
+  }
+}
+
+function onDeviceMotion(e: DeviceMotionEvent): void {
+  deviceMotionCount++;
+  const a = e.accelerationIncludingGravity;
+  if (a) {
+    if (a.x !== null && accelX.length < MAX) accelX.push(a.x);
+    if (a.y !== null && accelY.length < MAX) accelY.push(a.y);
+    if (a.z !== null && accelZ.length < MAX) accelZ.push(a.z);
+  }
+}
+
+function onDeviceOrientation(e: DeviceOrientationEvent): void {
+  if (e.alpha !== null && gyroAlpha.length < MAX) gyroAlpha.push(e.alpha);
+  if (e.beta !== null && gyroBeta.length < MAX) gyroBeta.push(e.beta);
+  if (e.gamma !== null && gyroGamma.length < MAX) gyroGamma.push(e.gamma);
 }
 
 function onCopyPaste(): void { recordActivity(); copyPasteCount++; }
@@ -291,7 +379,10 @@ export function initBehavior(): void {
   document.addEventListener('keyup', onKeyUp as EventListener, opts);
   document.addEventListener('scroll', onScroll, { passive: true, capture: true });
   document.addEventListener('touchstart', onTouchStart as EventListener, opts);
-  document.addEventListener('touchmove', () => recordActivity(), opts);
+  document.addEventListener('touchmove', onTouchMove as EventListener, opts);
+  document.addEventListener('touchend', onTouchEnd as EventListener, opts);
+  window.addEventListener('devicemotion', onDeviceMotion as EventListener, opts);
+  window.addEventListener('deviceorientation', onDeviceOrientation as EventListener, opts);
   document.addEventListener('copy', onCopyPaste, opts);
   document.addEventListener('paste', onCopyPaste, opts);
 }
@@ -325,6 +416,20 @@ export function getSignals(): BehaviorSignals {
     touchEvents: touchCount,
     touchPressureAvg: mean(touchPressures),
     touchRadiusAvg: mean(touchRadii),
+    touchVelocityAvg: mean(touchVelocities),
+    touchVelocityStd: std(touchVelocities),
+    touchAccelerationAvg: mean(touchAccelerations),
+    touchAccelerationStd: std(touchAccelerations),
+    touchCurvatureAvg: mean(touchCurvatures),
+    touchHoldDurationAvg: mean(touchHoldDurations),
+    touchHoldDurationStd: std(touchHoldDurations),
+    gyroAlphaStd: std(gyroAlpha),
+    gyroBetaStd: std(gyroBeta),
+    gyroGammaStd: std(gyroGamma),
+    accelXStd: std(accelX),
+    accelYStd: std(accelY),
+    accelZStd: std(accelZ),
+    deviceMotionEvents: deviceMotionCount,
     timeToFirstInteraction: firstInteraction ? (firstInteraction - startTime) / 1000 : dur,
     sessionDuration: dur,
     idleGaps,
