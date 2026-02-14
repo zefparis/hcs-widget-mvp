@@ -60,10 +60,6 @@ const nextConfig = {
             value: '1; mode=block',
           },
           {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
-          },
-          {
             key: 'X-DNS-Prefetch-Control',
             value: 'on',
           },
