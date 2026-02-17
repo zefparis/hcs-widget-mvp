@@ -121,7 +121,7 @@ interface ValidateResponse {
  */
 export async function validate(clientRisk: RiskBreakdown): Promise<ValidationResult | null> {
   const cfg = state.config;
-  const timeout = state.remoteConfig?.timeouts?.validateMs ?? 1200;
+  const timeout = state.remoteConfig?.timeouts?.validateMs ?? 5000;
 
   // Build raw request body
   const raw: ValidateRequestRaw = {

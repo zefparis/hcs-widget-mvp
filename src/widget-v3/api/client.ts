@@ -22,7 +22,7 @@ export async function safeFetch<T>(
   opts: FetchOptions = {}
 ): Promise<T | null> {
   const url = state.config.apiUrl + path;
-  const timeout = opts.timeoutMs ?? 1200;
+  const timeout = opts.timeoutMs ?? 5000;
 
   try {
     const controller = new AbortController();

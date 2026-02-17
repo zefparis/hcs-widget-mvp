@@ -32,7 +32,7 @@ export const SAFE_DEFAULTS: RemoteConfig = {
   bunkerPolicy: { enabled: true, ttlSeconds: 900 },
   sampling: { telemetry: 0.25, fullSignals: 0.10 },
   privacy: { maskPII: true },
-  timeouts: { configMs: 800, validateMs: 1200, pingMs: 400 },
+  timeouts: { configMs: 4000, validateMs: 5000, pingMs: 2000 },
   ui: { showBadge: false, showToastOnChallenge: true },
   killSwitch: false,
   updatedAt: '',
