@@ -65,7 +65,7 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(self), accelerometer=(self)',
           },
           {
             key: 'Content-Security-Policy',
@@ -75,7 +75,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.hcs-u7.org https://hcs-u7-backend.onrender.com",
+              "connect-src 'self' https://api.hcs-u7.org",
               "frame-src 'self'",
               "frame-ancestors *",
               "base-uri 'self'",

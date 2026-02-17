@@ -7,6 +7,7 @@
 import { state } from '../core/state';
 import { log } from '../core/logger';
 import { el, append, removeById, appendToBody } from '../core/dom';
+import { t } from '../core/i18n';
 import { supportsSessionStorage } from '../core/env';
 import { nowSec } from '../utils/time';
 
@@ -73,16 +74,16 @@ export async function executeBunker(): Promise<void> {
     const container = el('div', 'text-align:center;max-width:400px;padding:40px;');
 
     const icon = el('div', 'font-size:48px;margin-bottom:16px;', '\uD83D\uDEE1\uFE0F');
-    const title = el('h2', 'color:#f1f5f9;margin:0 0 8px 0;font-size:22px;', 'Security Verification Required');
+    const title = el('h2', 'color:#f1f5f9;margin:0 0 8px 0;font-size:22px;', t('bunkerTitle'));
     const desc = el('p', 'color:#94a3b8;margin:0 0 24px 0;font-size:14px;line-height:1.5;',
-      'Enhanced security is active. Please complete the verification to continue.');
+      t('bunkerDescription'));
 
     // Strict slider challenge (narrower tolerance)
     const targetValue = 40 + Math.floor(Math.random() * 20); // 40-60
     const tolerance = 3;
 
     const instruction = el('p', 'color:#cbd5e1;margin:0 0 16px 0;font-size:13px;',
-      'Move the slider precisely to ' + targetValue);
+      t('bunkerInstruction') + targetValue);
 
     const slider = document.createElement('input');
     slider.type = 'range';
@@ -95,10 +96,10 @@ export async function executeBunker(): Promise<void> {
 
     const submitBtn = el('button',
       'padding:12px 36px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;',
-      'Verify');
+      t('bunkerVerify'));
 
     const branding = el('p', 'color:#475569;font-size:10px;margin-top:24px;margin-bottom:0;',
-      'Protected by HCS-U7 Bunker Mode');
+      t('bunkerBranding'));
 
     slider.addEventListener('input', () => {
       valueDisplay.textContent = slider.value;
@@ -116,7 +117,7 @@ export async function executeBunker(): Promise<void> {
         resolve();
       } else {
         // Show error, let them retry
-        instruction.textContent = 'Incorrect. Try again — move to ' + targetValue;
+        instruction.textContent = t('bunkerRetry') + targetValue;
         instruction.style.color = '#f87171';
         slider.value = '0';
         valueDisplay.textContent = '0';

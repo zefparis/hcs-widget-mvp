@@ -7,6 +7,7 @@
 import { state } from '../core/state';
 import { log } from '../core/logger';
 import { el, append, removeById, appendToBody } from '../core/dom';
+import { t } from '../core/i18n';
 
 const OVERLAY_ID = 'hcs-challenge-overlay';
 
@@ -60,11 +61,11 @@ function cognitiveLite(): Promise<boolean> {
     const container = el('div', 'background:white;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);max-width:420px;width:90%;padding:30px;text-align:center;');
 
     // Title
-    const title = el('h3', 'margin:0 0 12px 0;color:#1e293b;font-family:system-ui,-apple-system,sans-serif;font-size:18px;', 'Human Verification');
+    const title = el('h3', 'margin:0 0 12px 0;color:#1e293b;font-family:system-ui,-apple-system,sans-serif;font-size:18px;', t('challengeTitle'));
 
     // Instruction
     const instruction = el('p', 'margin:0 0 20px 0;color:#64748b;font-size:14px;font-family:system-ui,-apple-system,sans-serif;',
-      'Move the slider to ' + targetValue);
+      t('challengeInstruction') + targetValue);
 
     // Slider
     const slider = document.createElement('input');
@@ -78,10 +79,10 @@ function cognitiveLite(): Promise<boolean> {
     const valueDisplay = el('div', 'font-size:28px;font-weight:bold;color:#3b82f6;font-family:system-ui,-apple-system,sans-serif;margin-bottom:16px;', '0');
 
     // Submit button
-    const submitBtn = el('button', 'padding:10px 30px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;font-family:system-ui,-apple-system,sans-serif;font-weight:600;', 'Validate');
+    const submitBtn = el('button', 'padding:10px 30px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;font-family:system-ui,-apple-system,sans-serif;font-weight:600;', t('challengeValidate'));
 
     // Branding
-    const branding = el('p', 'color:#cbd5e1;font-size:10px;margin-top:16px;margin-bottom:0;font-family:system-ui,-apple-system,sans-serif;', 'Protected by HCS-U7');
+    const branding = el('p', 'color:#cbd5e1;font-size:10px;margin-top:16px;margin-bottom:0;font-family:system-ui,-apple-system,sans-serif;', t('challengeBranding'));
 
     slider.addEventListener('input', () => {
       valueDisplay.textContent = slider.value;

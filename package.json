@@ -11,7 +11,10 @@
     "lint": "eslint",
     "test:widget": "node scripts/test-widget.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -23,6 +26,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -37,7 +41,7 @@
     "jsdom": "^28.0.0",
     "tailwindcss": "^4",
     "terser-webpack-plugin": "^5.3.16",
-    "typescript": "^5",
+    "typescript": "5.9.3",
     "vitest": "^4.0.18",
     "webpack-obfuscator": "^3.6.0"
   }

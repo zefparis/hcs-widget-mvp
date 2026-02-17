@@ -6,6 +6,7 @@
 
 import { log } from '../core/logger';
 import { el, append } from '../core/dom';
+import { t } from '../core/i18n';
 
 /**
  * Block access and show a full-page block screen.
@@ -19,13 +20,13 @@ export function executeBlock(reason: string): void {
 
   const inner = el('div', 'text-align:center;max-width:500px;padding:40px;');
   const icon = el('div', 'font-size:64px;margin-bottom:20px;', '\uD83D\uDEE1\uFE0F');
-  const h1 = el('h1', 'color:#1e293b;margin:0 0 10px 0;font-size:24px;', 'Access Blocked');
+  const h1 = el('h1', 'color:#1e293b;margin:0 0 10px 0;font-size:24px;', t('blockTitle'));
   const p1 = el('p', 'color:#64748b;margin:0 0 20px 0;font-size:15px;',
-    'Your access has been blocked by HCS-U7 Protection.');
+    t('blockMessage'));
   const p2 = el('p', 'color:#94a3b8;font-size:13px;',
-    'Reason: ' + (typeof reason === 'string' ? reason : 'Unknown'));
+    t('blockReason') + (typeof reason === 'string' ? reason : 'Unknown'));
   const p3 = el('p', 'color:#94a3b8;font-size:11px;margin-top:30px;',
-    'Protected by HCS-U7');
+    t('blockBranding'));
 
   append(inner, icon, h1, p1, p2, p3);
   wrapper.appendChild(inner);
