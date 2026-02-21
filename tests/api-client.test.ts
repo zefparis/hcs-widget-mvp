@@ -77,11 +77,13 @@ describe('HCSApiClient', () => {
       const fingerprint = {} as any;
       const botSignals = { score: 0, signals: [], suspicious: false };
 
+      // SECURITY: fail-closed — previous test cached an 'allow' decision,
+      // so errors return the cached decision (never auto-allow without cache)
       const result = await client.validate(fingerprint, botSignals);
 
       expect(result.valid).toBe(true);
       expect(result.action).toBe('allow');
-      expect(result.reason).toBe('api_error');
+      expect(result.reason).toBe('cached_decision');
     });
 
     it('returns fail-open response on network error', async () => {
@@ -90,11 +92,12 @@ describe('HCSApiClient', () => {
       const fingerprint = {} as any;
       const botSignals = { score: 0, signals: [], suspicious: false };
 
+      // SECURITY: fail-closed — cached 'allow' decision still valid
       const result = await client.validate(fingerprint, botSignals);
 
       expect(result.valid).toBe(true);
       expect(result.action).toBe('allow');
-      expect(result.reason).toBe('api_error');
+      expect(result.reason).toBe('cached_decision');
     });
 
     it('includes challenge result when provided', async () => {
