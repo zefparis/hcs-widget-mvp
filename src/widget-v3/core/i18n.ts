@@ -27,6 +27,16 @@ const translations = {
     bunkerVerify: 'Verify',
     bunkerRetry: 'Incorrect. Try again — move to ',
     bunkerBranding: 'Protected by HCS-U7 Bunker Mode',
+
+    // Badge & Card
+    badgeLabel: 'Protected by ',
+    badgeBrand: 'HCS-U7',
+    cardTitle: 'HCS-U7 Cognitive Authentication',
+    cardDescription: 'This site is protected by the world\'s first cognitive biometric authentication technology. It distinguishes humans from AI using neuropsychological tests scientifically validated since 1935.',
+    cardMetricAttacks: 'attacks blocked',
+    cardMetricBreaches: 'breaches',
+    cardMetricAudit: 'audit',
+    cardCta: 'Discover HCS-U7 \u2192',
   },
   fr: {
     // Challenge
@@ -48,6 +58,16 @@ const translations = {
     bunkerVerify: 'Vérifier',
     bunkerRetry: 'Incorrect. Réessayez — déplacez sur ',
     bunkerBranding: 'Protégé par HCS-U7 Mode Bunker',
+
+    // Badge & Card
+    badgeLabel: 'Protégé par ',
+    badgeBrand: 'HCS-U7',
+    cardTitle: 'HCS-U7 Authentification Cognitive',
+    cardDescription: 'Ce site est protégé par la première technologie d\u2019authentification biométrique cognitive au monde. Elle distingue les humains des IA grâce à des tests neuropsychologiques scientifiquement validés depuis 1935.',
+    cardMetricAttacks: 'attaques bloquées',
+    cardMetricBreaches: 'brèches',
+    cardMetricAudit: 'audit',
+    cardCta: 'Découvrir HCS-U7 \u2192',
   },
 } as const;
 

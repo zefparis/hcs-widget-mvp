@@ -65,7 +65,7 @@ async function boot(): Promise<void> {
     setDebug(true);
   }
 
-  // 4. Setup debug badge (if authorized)
+  // 4. "Protected by HCS-U7" badge (always visible) + debug API
   setupDebugAPI();
   showBadge();
 

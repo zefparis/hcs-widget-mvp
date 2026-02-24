@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Badge — Protected by HCS-U7</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+    .hero {
+      max-width: 720px;
+      margin: 80px auto;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 2rem;
+      margin-bottom: 12px;
+      color: #0f172a;
+    }
+    .hero p {
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .content {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px 200px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .card h3 { margin-bottom: 8px; color: #334155; }
+    .card p { color: #64748b; line-height: 1.6; font-size: 14px; }
+    .note {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 32px;
+      font-size: 13px;
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Mon Site Protégé</h1>
+    <p>Cette page simule un site client avec le widget HCS-U7 installé.<br>
+    Regardez en bas à droite — le badge "Protected by HCS-U7" est toujours visible.</p>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <h3>Formulaire de connexion</h3>
+      <p>Ici se trouverait le formulaire de login du client. Le widget tourne en arrière-plan, invisible pour les humains normaux.</p>
+    </div>
+    <div class="card">
+      <h3>Contenu protégé</h3>
+      <p>Le badge reste visible même quand le contenu défile. Il n'interfère pas avec la navigation ni avec les overlays d'authentification.</p>
+    </div>
+    <div class="card">
+      <h3>Test responsive</h3>
+      <p>Réduisez la fenêtre pour vérifier le comportement mobile. Le badge et la card s'adaptent automatiquement.</p>
+    </div>
+
+    <div class="note">
+      <strong>Instructions :</strong><br>
+      1. Cliquez sur le badge en bas à droite → la card info s'ouvre<br>
+      2. Cliquez sur "Découvrir HCS-U7 →" → ouvre hcs-u7.com en nouvel onglet<br>
+      3. Cliquez sur ✕ ou en dehors de la card → elle se ferme<br>
+      4. Le badge reste visible même en scrollant
+    </div>
+  </div>
+
+  <!-- Widget HCS-U7 (badge will auto-appear) -->
+  <script>
+    // Simulate minimal widget init for badge-only testing
+    // In production, the real widget script handles this automatically
+    (function() {
+      const BADGE_ID = 'hcs-u7-badge';
+      const CARD_ID = 'hcs-u7-card';
+      const ACCENT = '#6366f1';
+      const FONT = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
+      const SHIELD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + ACCENT + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke="' + ACCENT + '"/></svg>';
+
+      function css(styles) {
+        let s = '';
+        for (const k in styles) s += k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()) + ':' + styles[k] + ';';
+        return s;
+      }
+
+      let cardVisible = false;
+
+      function showBadge() {
+        const badge = document.createElement('div');
+        badge.id = BADGE_ID;
+        badge.style.cssText = css({
+          position: 'fixed', bottom: '16px', right: '16px',
+          background: 'rgba(15,23,42,0.92)', color: '#e2e8f0',
+          padding: '7px 14px 7px 10px', borderRadius: '8px',
+          fontFamily: FONT, fontSize: '12px', fontWeight: '500',
+          zIndex: '2147483646', cursor: 'pointer', userSelect: 'none',
+          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+          border: '1px solid rgba(99,102,241,0.25)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+          display: 'flex', alignItems: 'center', gap: '6px',
+          transition: 'opacity 0.2s, transform 0.2s',
+          opacity: '0', transform: 'translateY(8px)',
+        });
+
+        const iconWrap = document.createElement('span');
+        iconWrap.innerHTML = SHIELD_SVG;
+        iconWrap.style.cssText = 'display:flex;align-items:center;flex-shrink:0;';
+
+        const label = document.createElement('span');
+        label.textContent = 'Protected by ';
+        label.style.cssText = 'color:#94a3b8;letter-spacing:0.01em;';
+
+        const brand = document.createElement('span');
+        brand.textContent = 'HCS-U7';
+        brand.style.cssText = 'color:#e2e8f0;font-weight:700;letter-spacing:0.02em;';
+
+        badge.appendChild(iconWrap);
+        badge.appendChild(label);
+        badge.appendChild(brand);
+
+        badge.addEventListener('click', function(e) { e.stopPropagation(); toggleCard(); });
+        badge.addEventListener('mouseenter', function() {
+          badge.style.border = '1px solid rgba(99,102,241,0.5)';
+          badge.style.boxShadow = '0 2px 16px rgba(99,102,241,0.15)';
+        });
+        badge.addEventListener('mouseleave', function() {
+          badge.style.border = '1px solid rgba(99,102,241,0.25)';
+          badge.style.boxShadow = '0 2px 12px rgba(0,0,0,0.3)';
+        });
+
+        document.body.appendChild(badge);
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            badge.style.opacity = '1';
+            badge.style.transform = 'translateY(0)';
+          });
+        });
+      }
+
+      function createCard() {
+        const card = document.createElement('div');
+        card.id = CARD_ID;
+        card.style.cssText = css({
+          position: 'fixed', bottom: '56px', right: '16px',
+          width: '320px', maxWidth: 'calc(100vw - 32px)',
+          background: 'rgba(15,23,42,0.96)', color: '#e2e8f0',
+          borderRadius: '12px', fontFamily: FONT, fontSize: '13px', lineHeight: '1.5',
+          zIndex: '2147483647', backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(99,102,241,0.2)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          overflow: 'hidden', opacity: '0',
+          transform: 'translateY(8px) scale(0.98)',
+          transition: 'opacity 0.25s ease, transform 0.25s ease',
+        });
+
+        // Header
+        const header = document.createElement('div');
+        header.style.cssText = css({ padding: '16px 16px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: '1px solid rgba(148,163,184,0.1)' });
+
+        const headerLeft = document.createElement('div');
+        const shieldLg = document.createElement('span');
+        shieldLg.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + ACCENT + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke="' + ACCENT + '"/></svg>';
+        shieldLg.style.cssText = 'display:inline-flex;vertical-align:middle;margin-right:8px;';
+        const titleText = document.createElement('span');
+        titleText.textContent = 'HCS-U7 Cognitive Authentication';
+        titleText.style.cssText = 'font-weight:700;font-size:14px;color:#f1f5f9;';
+        headerLeft.appendChild(shieldLg);
+        headerLeft.appendChild(titleText);
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '\u2715';
+        closeBtn.style.cssText = css({ background: 'none', border: 'none', color: '#64748b', fontSize: '16px', cursor: 'pointer', padding: '0 0 0 8px', lineHeight: '1', flexShrink: '0' });
+        closeBtn.addEventListener('click', function(e) { e.stopPropagation(); hideCard(); });
+        closeBtn.addEventListener('mouseenter', function() { closeBtn.style.color = '#e2e8f0'; });
+        closeBtn.addEventListener('mouseleave', function() { closeBtn.style.color = '#64748b'; });
+
+        header.appendChild(headerLeft);
+        header.appendChild(closeBtn);
+
+        // Body
+        const body = document.createElement('div');
+        body.style.cssText = css({ padding: '14px 16px' });
+
+        const desc = document.createElement('p');
+        desc.textContent = 'Ce site est protégé par la première technologie d\u2019authentification biométrique cognitive au monde. Elle distingue les humains des IA grâce à des tests neuropsychologiques scientifiquement validés depuis 1935.';
+        desc.style.cssText = css({ margin: '0 0 14px 0', color: '#94a3b8', fontSize: '12.5px', lineHeight: '1.6' });
+
+        const metrics = document.createElement('div');
+        metrics.style.cssText = css({ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '10px 14px', background: 'rgba(99,102,241,0.06)', borderRadius: '8px', marginBottom: '14px', border: '1px solid rgba(99,102,241,0.1)' });
+
+        [{v:'518',l:'attaques bloquées',i:'\uD83D\uDEE1\uFE0F'},{v:'0',l:'brèches',i:'\u2705'},{v:'9.7/10',l:'audit',i:'\u2B50'}].forEach(function(m) {
+          const item = document.createElement('div');
+          item.style.cssText = css({ textAlign: 'center', flex: '1', minWidth: '70px' });
+          const val = document.createElement('div');
+          val.textContent = m.i + ' ' + m.v;
+          val.style.cssText = css({ fontWeight: '700', fontSize: '13px', color: '#f1f5f9' });
+          const lbl = document.createElement('div');
+          lbl.textContent = m.l;
+          lbl.style.cssText = css({ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.04em' });
+          item.appendChild(val);
+          item.appendChild(lbl);
+          metrics.appendChild(item);
+        });
+
+        body.appendChild(desc);
+        body.appendChild(metrics);
+
+        // Footer
+        const footer = document.createElement('div');
+        footer.style.cssText = css({ padding: '0 16px 16px' });
+        const cta = document.createElement('a');
+        cta.href = 'https://hcs-u7.com';
+        cta.target = '_blank';
+        cta.rel = 'noopener noreferrer';
+        cta.textContent = 'Découvrir HCS-U7 \u2192';
+        cta.style.cssText = css({ display: 'block', width: '100%', textAlign: 'center', padding: '10px 0', background: ACCENT, color: '#ffffff', fontWeight: '600', fontSize: '13px', borderRadius: '8px', textDecoration: 'none', cursor: 'pointer', border: 'none', transition: 'background 0.15s', boxSizing: 'border-box' });
+        cta.addEventListener('mouseenter', function() { cta.style.background = '#818cf8'; });
+        cta.addEventListener('mouseleave', function() { cta.style.background = ACCENT; });
+        footer.appendChild(cta);
+
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
+
+        setTimeout(function() {
+          document.addEventListener('click', function handler(e) {
+            const t = e.target;
+            if (!card.contains(t) && t.id !== BADGE_ID && !t.closest('#' + BADGE_ID)) {
+              hideCard();
+              document.removeEventListener('click', handler);
+            }
+          });
+        }, 10);
+
+        return card;
+      }
+
+      function toggleCard() {
+        if (cardVisible) hideCard(); else showCard();
+      }
+
+      function showCard() {
+        var old = document.getElementById(CARD_ID);
+        if (old) old.remove();
+        var card = createCard();
+        document.body.appendChild(card);
+        cardVisible = true;
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0) scale(1)';
+          });
+        });
+      }
+
+      function hideCard() {
+        var card = document.getElementById(CARD_ID);
+        if (card) {
+          card.style.opacity = '0';
+          card.style.transform = 'translateY(8px) scale(0.98)';
+          setTimeout(function() { var c = document.getElementById(CARD_ID); if (c) c.remove(); }, 250);
+        }
+        cardVisible = false;
+      }
+
+      showBadge();
+    })();
+  </script>
+</body>
+</html>

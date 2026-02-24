@@ -1,64 +1,354 @@
 /**
- * HCS-U7 Widget v3 — Debug badge
- * Small semi-transparent badge in bottom-right corner.
- * Only shown if debug=true in remote config + token debug.
+ * HCS-U7 Widget v3 — "Protected by HCS-U7" badge + info card
+ * Always visible on all protected sites (bottom-right corner).
+ * Click opens info card with description, metrics, and CTA.
+ * Does not interfere with auth flow (challenge/bunker overlays).
+ *
+ * @copyright (c) 2025-2026 Benjamin BARRERE / IA SOLUTION
+ * @license Patents Pending FR2514274 | FR2514546
  */
 
 import { state } from '../core/state';
 import { isDebug } from '../core/logger';
-import { el, appendToBody, removeById } from '../core/dom';
+import { appendToBody, removeById } from '../core/dom';
+import { t } from '../core/i18n';
 
-const BADGE_ID = 'hcs-debug-badge';
-const SCORE_ID = 'hcs-debug-score';
+const BADGE_ID = 'hcs-u7-badge';
+const CARD_ID = 'hcs-u7-card';
+const ACCENT = '#6366f1';
+const FONT = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
 
+// ── SVG shield icon (inline, no external dependency) ──
+const SHIELD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + ACCENT + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke="' + ACCENT + '"/></svg>';
+
+// ── Helpers ──
+function css(styles: Record<string, string>): string {
+  let s = '';
+  for (const k in styles) s += k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()) + ':' + styles[k] + ';';
+  return s;
+}
+
+function div(id: string, styleObj: Record<string, string>): HTMLDivElement {
+  const d = document.createElement('div');
+  d.id = id;
+  d.style.cssText = css(styleObj);
+  return d;
+}
+
+function span(text: string, styleObj: Record<string, string>): HTMLSpanElement {
+  const s = document.createElement('span');
+  s.textContent = text;
+  s.style.cssText = css(styleObj);
+  return s;
+}
+
+let cardVisible = false;
+
+// ── Badge (always visible) ──
 export function showBadge(): void {
-  if (!isDebug()) return;
-  if (!state.remoteConfig?.ui?.showBadge && !state.config.debug) return;
-
   removeById(BADGE_ID);
+  removeById(CARD_ID);
 
-  const badge = el('div',
-    'position:fixed;bottom:10px;right:10px;background:rgba(30,41,59,0.8);color:#e2e8f0;padding:6px 12px;border-radius:8px;font-family:system-ui,-apple-system,sans-serif;font-size:11px;z-index:999998;cursor:pointer;user-select:none;backdrop-filter:blur(4px);border:1px solid rgba(148,163,184,0.2);');
-  badge.id = BADGE_ID;
+  const badge = div(BADGE_ID, {
+    position: 'fixed',
+    bottom: '16px',
+    right: '16px',
+    background: 'rgba(15,23,42,0.92)',
+    color: '#e2e8f0',
+    padding: '7px 14px 7px 10px',
+    borderRadius: '8px',
+    fontFamily: FONT,
+    fontSize: '12px',
+    fontWeight: '500',
+    zIndex: '2147483646',
+    cursor: 'pointer',
+    userSelect: 'none',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    border: '1px solid rgba(99,102,241,0.25)',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'opacity 0.2s, transform 0.2s',
+    opacity: '0',
+    transform: 'translateY(8px)',
+  });
 
-  const label = el('span', 'font-weight:600;', '\uD83D\uDEE1\uFE0F HCS Debug ');
-  const scoreSpan = el('span', 'margin-left:4px;', '...');
-  scoreSpan.id = SCORE_ID;
+  // Shield icon
+  const iconWrap = document.createElement('span');
+  iconWrap.innerHTML = SHIELD_SVG;
+  iconWrap.style.cssText = 'display:flex;align-items:center;flex-shrink:0;';
 
+  // Label
+  const label = span(t('badgeLabel'), { color: '#94a3b8', letterSpacing: '0.01em' });
+  const brand = span(t('badgeBrand'), { color: '#e2e8f0', fontWeight: '700', letterSpacing: '0.02em' });
+
+  badge.appendChild(iconWrap);
   badge.appendChild(label);
-  badge.appendChild(scoreSpan);
+  badge.appendChild(brand);
 
-  badge.addEventListener('click', () => {
-    console.group('[HCS-U7] Debug Details');
-    console.log('Version:', state.config.version);
-    console.log('Decision:', state.lastDecision);
-    console.log('Risk:', state.lastRisk);
-    console.log('Validation:', state.lastValidation);
-    console.log('Degraded:', state.degraded);
-    console.log('Remote config:', state.remoteConfig?.mode);
-    console.groupEnd();
+  // Click → toggle card
+  badge.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleCard();
+  });
+
+  // Hover effect
+  badge.addEventListener('mouseenter', () => {
+    badge.style.border = '1px solid rgba(99,102,241,0.5)';
+    badge.style.boxShadow = '0 2px 16px rgba(99,102,241,0.15)';
+  });
+  badge.addEventListener('mouseleave', () => {
+    badge.style.border = '1px solid rgba(99,102,241,0.25)';
+    badge.style.boxShadow = '0 2px 12px rgba(0,0,0,0.3)';
   });
 
   appendToBody(badge);
+
+  // Fade-in animation
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      badge.style.opacity = '1';
+      badge.style.transform = 'translateY(0)';
+    });
+  });
 }
 
-export function updateBadge(score: number, decision: string): void {
-  if (!isDebug()) return;
-  const scoreEl = document.getElementById(SCORE_ID);
-  if (!scoreEl) return;
+// ── Info card popup ──
+function createCard(): HTMLDivElement {
+  const card = div(CARD_ID, {
+    position: 'fixed',
+    bottom: '56px',
+    right: '16px',
+    width: '320px',
+    maxWidth: 'calc(100vw - 32px)',
+    background: 'rgba(15,23,42,0.96)',
+    color: '#e2e8f0',
+    borderRadius: '12px',
+    fontFamily: FONT,
+    fontSize: '13px',
+    lineHeight: '1.5',
+    zIndex: '2147483647',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    border: '1px solid rgba(99,102,241,0.2)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+    overflow: 'hidden',
+    opacity: '0',
+    transform: 'translateY(8px) scale(0.98)',
+    transition: 'opacity 0.25s ease, transform 0.25s ease',
+  });
 
-  const color = decision === 'allow' ? '#4ade80'
-    : decision === 'soft' ? '#a3e635'
-    : decision === 'challenge' || decision === 'hard_challenge' ? '#fbbf24'
-    : decision === 'bunker' ? '#f97316'
-    : '#f87171';
+  // ── Header ──
+  const header = document.createElement('div');
+  header.style.cssText = css({
+    padding: '16px 16px 12px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    borderBottom: '1px solid rgba(148,163,184,0.1)',
+  });
 
-  const icon = decision === 'allow' ? '\u2705'
-    : decision === 'soft' ? '\uD83D\uDFE2'
-    : decision === 'challenge' || decision === 'hard_challenge' ? '\u26A0\uFE0F'
-    : decision === 'bunker' ? '\uD83D\uDEE1\uFE0F'
-    : '\u274C';
+  const headerLeft = document.createElement('div');
+  const shieldLg = document.createElement('span');
+  shieldLg.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + ACCENT + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke="' + ACCENT + '"/></svg>';
+  shieldLg.style.cssText = 'display:inline-flex;vertical-align:middle;margin-right:8px;';
 
-  scoreEl.textContent = icon + ' ' + Math.round(score);
-  scoreEl.style.color = color;
+  const titleText = span(t('cardTitle'), {
+    fontWeight: '700',
+    fontSize: '14px',
+    color: '#f1f5f9',
+  });
+
+  headerLeft.appendChild(shieldLg);
+  headerLeft.appendChild(titleText);
+
+  // Close button
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '\u2715';
+  closeBtn.style.cssText = css({
+    background: 'none',
+    border: 'none',
+    color: '#64748b',
+    fontSize: '16px',
+    cursor: 'pointer',
+    padding: '0 0 0 8px',
+    lineHeight: '1',
+    flexShrink: '0',
+  });
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hideCard();
+  });
+  closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = '#e2e8f0'; });
+  closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = '#64748b'; });
+
+  header.appendChild(headerLeft);
+  header.appendChild(closeBtn);
+
+  // ── Body ──
+  const body = document.createElement('div');
+  body.style.cssText = css({ padding: '14px 16px' });
+
+  const desc = document.createElement('p');
+  desc.textContent = t('cardDescription');
+  desc.style.cssText = css({
+    margin: '0 0 14px 0',
+    color: '#94a3b8',
+    fontSize: '12.5px',
+    lineHeight: '1.6',
+  });
+
+  // Metrics bar
+  const metrics = document.createElement('div');
+  metrics.style.cssText = css({
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+    padding: '10px 14px',
+    background: 'rgba(99,102,241,0.06)',
+    borderRadius: '8px',
+    marginBottom: '14px',
+    border: '1px solid rgba(99,102,241,0.1)',
+  });
+
+  const metricData = [
+    { value: '518', label: t('cardMetricAttacks'), icon: '\uD83D\uDEE1\uFE0F' },
+    { value: '0', label: t('cardMetricBreaches'), icon: '\u2705' },
+    { value: '9.7/10', label: t('cardMetricAudit'), icon: '\u2B50' },
+  ];
+
+  for (const m of metricData) {
+    const item = document.createElement('div');
+    item.style.cssText = css({ textAlign: 'center', flex: '1', minWidth: '70px' });
+    const val = document.createElement('div');
+    val.textContent = m.icon + ' ' + m.value;
+    val.style.cssText = css({ fontWeight: '700', fontSize: '13px', color: '#f1f5f9' });
+    const lbl = document.createElement('div');
+    lbl.textContent = m.label;
+    lbl.style.cssText = css({ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.04em' });
+    item.appendChild(val);
+    item.appendChild(lbl);
+    metrics.appendChild(item);
+  }
+
+  body.appendChild(desc);
+  body.appendChild(metrics);
+
+  // ── Footer: CTA ──
+  const footer = document.createElement('div');
+  footer.style.cssText = css({
+    padding: '0 16px 16px',
+  });
+
+  const cta = document.createElement('a');
+  cta.href = 'https://hcs-u7.com';
+  cta.target = '_blank';
+  cta.rel = 'noopener noreferrer';
+  cta.textContent = t('cardCta');
+  cta.style.cssText = css({
+    display: 'block',
+    width: '100%',
+    textAlign: 'center',
+    padding: '10px 0',
+    background: ACCENT,
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: '13px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    border: 'none',
+    transition: 'background 0.15s',
+    boxSizing: 'border-box',
+  });
+  cta.addEventListener('mouseenter', () => { cta.style.background = '#818cf8'; });
+  cta.addEventListener('mouseleave', () => { cta.style.background = ACCENT; });
+
+  footer.appendChild(cta);
+
+  // ── Debug info (only in debug mode) ──
+  if (isDebug() || state.config.debug) {
+    const debugBar = document.createElement('div');
+    debugBar.id = 'hcs-u7-debug-bar';
+    debugBar.style.cssText = css({
+      padding: '8px 16px',
+      borderTop: '1px solid rgba(148,163,184,0.1)',
+      fontSize: '10px',
+      color: '#475569',
+      fontFamily: 'monospace',
+    });
+    debugBar.textContent = 'v' + state.config.version + ' | mode: ' + (state.remoteConfig?.mode ?? 'n/a');
+    card.appendChild(header);
+    card.appendChild(body);
+    card.appendChild(footer);
+    card.appendChild(debugBar);
+  } else {
+    card.appendChild(header);
+    card.appendChild(body);
+    card.appendChild(footer);
+  }
+
+  // Close on outside click
+  const onOutside = (e: MouseEvent) => {
+    const t = e.target as HTMLElement;
+    if (!card.contains(t) && t.id !== BADGE_ID && !t.closest('#' + BADGE_ID)) {
+      hideCard();
+      document.removeEventListener('click', onOutside);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', onOutside), 10);
+
+  return card;
+}
+
+function toggleCard(): void {
+  if (cardVisible) {
+    hideCard();
+  } else {
+    showCard();
+  }
+}
+
+function showCard(): void {
+  removeById(CARD_ID);
+  const card = createCard();
+  appendToBody(card);
+  cardVisible = true;
+
+  // Fade-in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0) scale(1)';
+    });
+  });
+}
+
+function hideCard(): void {
+  const card = document.getElementById(CARD_ID);
+  if (card) {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(8px) scale(0.98)';
+    setTimeout(() => removeById(CARD_ID), 250);
+  }
+  cardVisible = false;
+}
+
+// ── Update badge (called after decision pipeline) ──
+export function updateBadge(_score: number, _decision: string): void {
+  // Production badge doesn't display score — but debug bar updates if visible
+  if (isDebug() || state.config.debug) {
+    const debugBar = document.getElementById('hcs-u7-debug-bar');
+    if (debugBar) {
+      const color = _decision === 'allow' ? '#4ade80'
+        : _decision === 'soft' ? '#a3e635'
+        : _decision === 'challenge' || _decision === 'hard_challenge' ? '#fbbf24'
+        : _decision === 'bunker' ? '#f97316'
+        : '#f87171';
+      debugBar.textContent = 'v' + state.config.version + ' | ' + _decision + ' (' + Math.round(_score) + ') | ' + (state.remoteConfig?.mode ?? 'n/a');
+      debugBar.style.color = color;
+    }
+  }
 }
