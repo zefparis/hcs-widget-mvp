@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HCS-U7 Widget — Test UX Scénarios</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; }
+    .header { background: #0f172a; color: white; padding: 24px 32px; }
+    .header h1 { font-size: 22px; margin-bottom: 4px; }
+    .header p { color: #94a3b8; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; padding: 24px 32px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; }
+    .card-header .badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-black { background: #1e293b; color: white; }
+    .card-header h3 { font-size: 15px; flex: 1; }
+    .card-body { padding: 16px 20px; }
+    .card-body .score { font-size: 13px; color: #64748b; margin-bottom: 12px; }
+    .card-body .desc { font-size: 13px; color: #475569; line-height: 1.6; margin-bottom: 16px; }
+    .card-body .desc strong { color: #1e293b; }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; color: white; width: 100%; }
+    .btn-blue { background: #3b82f6; }
+    .btn-blue:hover { background: #2563eb; }
+    .btn-red { background: #ef4444; }
+    .btn-red:hover { background: #dc2626; }
+    .btn-dark { background: #0f172a; }
+    .btn-dark:hover { background: #1e293b; }
+    .preview-frame { border: 2px solid #e2e8f0; border-radius: 8px; min-height: 400px; position: relative; overflow: hidden; background: white; }
+    .section-title { padding: 24px 32px 0; font-size: 18px; color: #1e293b; }
+    .section-desc { padding: 8px 32px 0; font-size: 14px; color: #64748b; }
+    .preview-container { padding: 24px 32px; }
+    .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 24px 32px; font-size: 13px; color: #1e40af; line-height: 1.6; }
+    .info-box strong { display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🛡️ HCS-U7 Widget v3 — Test UX Scénarios</h1>
+  <p>Simulation visuelle des 5 niveaux de décision du widget</p>
+</div>
+
+<div class="info-box">
+  <strong>⚠️ Rappel Architecture</strong>
+  Le widget ne fait PAS de tests cognitifs (Stroop, N-Back…). Il collecte passivement des signaux comportementaux 
+  (souris, clavier, scroll, touch, gyroscope) et calcule un score de risque. Les actions ci-dessous sont déclenchées 
+  selon les seuils : allow (&lt;30) → soft (30-55) → challenge (55-80) → hard_challenge (80-95) → bunker/block (≥95).
+</div>
+
+<div class="grid">
+  <!-- ALLOW -->
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-green">ALLOW</span>
+      <h3>Utilisateur normal</h3>
+    </div>
+    <div class="card-body">
+      <div class="score">Score : 0 – 29 / 100</div>
+      <div class="desc">
+        <strong>Ce qui se passe :</strong> Absolument rien. Aucune UI visible, aucune friction. 
+        L'utilisateur ne sait même pas que le widget existe. La page se charge normalement.
+        <br><br>
+        <strong>Code exécuté :</strong> <code>executeAllow()</code> — un simple log debug invisible.
+      </div>
+      <button class="btn btn-blue" onclick="simulateAllow()">▶ Simuler ALLOW</button>
+    </div>
+  </div>
+
+  <!-- SOFT -->
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-yellow">SOFT</span>
+      <h3>Légèrement suspect</h3>
+    </div>
+    <div class="card-body">
+      <div class="score">Score : 30 – 54 / 100</div>
+      <div class="desc">
+        <strong>Ce qui se passe :</strong> Actions invisibles en arrière-plan. L'utilisateur ne voit rien.
+        <br><br>
+        <strong>Actions silencieuses :</strong><br>
+        • PoW-lite : burn CPU 150-300ms (coûteux à l'échelle bot)<br>
+        • JS Attestation : vérification canvas + APIs navigateur<br>
+        • Silent retry + token refresh si configuré
+      </div>
+      <button class="btn btn-blue" onclick="simulateSoft()">▶ Simuler SOFT</button>
+    </div>
+  </div>
+
+  <!-- CHALLENGE -->
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-orange">CHALLENGE</span>
+      <h3>Bot suspecté (variabilité TR &lt;30ms)</h3>
+    </div>
+    <div class="card-body">
+      <div class="score">Score : 55 – 79 / 100</div>
+      <div class="desc">
+        <strong>Ce qui se passe :</strong> Overlay modal avec slider. L'utilisateur doit déplacer le curseur 
+        sur la valeur cible (rendue via canvas, illisible par les bots DOM).
+        <br><br>
+        <strong>Anti-bot :</strong> min 800ms, min 3 input events, tracking micro-mouvements.
+        <br>
+        <strong>Échec →</strong> BLOCK immédiat.
+      </div>
+      <button class="btn btn-blue" onclick="simulateChallenge()">▶ Simuler CHALLENGE</button>
+    </div>
+  </div>
+
+  <!-- BUNKER -->
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-black">BUNKER</span>
+      <h3>Risque très élevé / Incident</h3>
+    </div>
+    <div class="card-body">
+      <div class="score">Score : ≥ 95 / 100 (bunker activé)</div>
+      <div class="desc">
+        <strong>Ce qui se passe :</strong> Plein écran sombre. Slider avec tolérance réduite (±3 vs ±5).
+        Le site est complètement bloqué derrière la gate.
+        <br><br>
+        <strong>Réussite →</strong> Whitelist 15min (sessionStorage).<br>
+        <strong>Échec →</strong> Retry illimité (pas de block).
+      </div>
+      <button class="btn btn-dark" onclick="simulateBunker()">▶ Simuler BUNKER</button>
+    </div>
+  </div>
+
+  <!-- BLOCK -->
+  <div class="card">
+    <div class="card-header">
+      <span class="badge badge-red">BLOCK</span>
+      <h3>Bot confirmé / Challenge échoué</h3>
+    </div>
+    <div class="card-body">
+      <div class="score">Score : ≥ 95 (bunker désactivé) ou challenge échoué</div>
+      <div class="desc">
+        <strong>Ce qui se passe :</strong> La page entière est remplacée par un écran de blocage plein écran.
+        <code>document.body</code> est vidé et remplacé.
+        <br><br>
+        <strong>Message affiché :</strong> "Accès bloqué" + raison + branding HCS-U7.<br>
+        <strong>Aucun redirect.</strong> Aucun lien de retour. L'utilisateur doit fermer l'onglet.
+      </div>
+      <button class="btn btn-red" onclick="simulateBlock()">▶ Simuler BLOCK</button>
+    </div>
+  </div>
+</div>
+
+<h2 class="section-title">Prévisualisation en direct</h2>
+<p class="section-desc">Cliquez sur un bouton ci-dessus pour voir le rendu dans la zone ci-dessous.</p>
+
+<div class="preview-container">
+  <div class="preview-frame" id="preview">
+    <div style="display:flex;align-items:center;justify-content:center;height:400px;color:#94a3b8;font-size:15px;">
+      ← Cliquez sur un bouton pour voir la simulation
+    </div>
+  </div>
+</div>
+
+<script>
+const preview = document.getElementById('preview');
+
+function clearPreview() {
+  preview.innerHTML = '';
+  preview.style.background = 'white';
+}
+
+function el(tag, style, text) {
+  const e = document.createElement(tag);
+  e.style.cssText = style;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+// ═══════════════════════════════════════
+// ALLOW
+// ═══════════════════════════════════════
+function simulateAllow() {
+  clearPreview();
+  const wrap = el('div', 'padding:40px;text-align:center;');
+  const icon = el('div', 'font-size:48px;margin-bottom:16px;', '✅');
+  const h = el('h3', 'color:#166534;margin-bottom:8px;', 'ALLOW — Aucune UI visible');
+  const p = el('p', 'color:#64748b;font-size:14px;line-height:1.6;',
+    'L\'utilisateur ne voit absolument rien. Le widget a collecté les signaux, ' +
+    'envoyé au backend, reçu "allow", et s\'est arrêté silencieusement. ' +
+    'La page du client fonctionne normalement sans aucune interférence.');
+  const log = el('pre', 'background:#f1f5f9;padding:16px;border-radius:8px;text-align:left;font-size:12px;margin-top:20px;color:#475569;overflow-x:auto;',
+    '[HCS-U7][action] ALLOW — no friction\n[HCS-U7][decision] Decision: allow (score: 12, ema: 12)\n[HCS-U7][risk] Score: 12 | reasons: ');
+  wrap.append(icon, h, p, log);
+  preview.appendChild(wrap);
+}
+
+// ═══════════════════════════════════════
+// SOFT
+// ═══════════════════════════════════════
+function simulateSoft() {
+  clearPreview();
+  const wrap = el('div', 'padding:40px;text-align:center;');
+  const icon = el('div', 'font-size:48px;margin-bottom:16px;', '🔍');
+  const h = el('h3', 'color:#854d0e;margin-bottom:8px;', 'SOFT — Actions invisibles en cours...');
+  const p = el('p', 'color:#64748b;font-size:14px;line-height:1.6;margin-bottom:20px;',
+    'L\'utilisateur ne voit toujours rien. En arrière-plan, le widget exécute :');
+  
+  const steps = el('div', 'text-align:left;max-width:500px;margin:0 auto;');
+  
+  const s1 = el('div', 'background:#fef9c3;padding:12px 16px;border-radius:8px;margin-bottom:8px;font-size:13px;', '');
+  s1.innerHTML = '<strong>1. PoW-lite</strong> — Burn CPU 150-300ms (trivial pour un humain, coûteux pour 10 000 bots)';
+  
+  const s2 = el('div', 'background:#fef9c3;padding:12px 16px;border-radius:8px;margin-bottom:8px;font-size:13px;', '');
+  s2.innerHTML = '<strong>2. JS Attestation</strong> — Canvas render + vérification requestAnimationFrame, createTreeWalker, getComputedStyle';
+  
+  const s3 = el('div', 'background:#fef9c3;padding:12px 16px;border-radius:8px;font-size:13px;', '');
+  s3.innerHTML = '<strong>3. Silent Retry</strong> — Re-validation après délai aléatoire (500ms ± 30%)';
+
+  const log = el('pre', 'background:#f1f5f9;padding:16px;border-radius:8px;text-align:left;font-size:12px;margin-top:20px;color:#475569;overflow-x:auto;',
+    '[HCS-U7][action] SOFT — executing: pow-lite, js-attestation\n[HCS-U7][soft] PoW-lite completed: 48291 iterations in 237ms\n[HCS-U7][soft] JS attestation: 3/3 checks, 2ms\n[HCS-U7][decision] Decision: soft (score: 42, ema: 38)');
+
+  steps.append(s1, s2, s3);
+  wrap.append(icon, h, p, steps, log);
+  preview.appendChild(wrap);
+}
+
+// ═══════════════════════════════════════
+// CHALLENGE (rendu réel)
+// ═══════════════════════════════════════
+function simulateChallenge() {
+  clearPreview();
+  preview.style.background = 'rgba(0,0,0,0.5)';
+  
+  const overlay = el('div', 'display:flex;align-items:center;justify-content:center;min-height:400px;');
+  
+  const container = el('div', 'background:white;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);max-width:420px;width:90%;padding:30px;text-align:center;');
+  
+  const title = el('h3', 'margin:0 0 12px 0;color:#1e293b;font-size:18px;', 'Vérification humaine');
+  const instruction = el('p', 'margin:0 0 8px 0;color:#64748b;font-size:14px;', 'Déplacez le curseur sur');
+  
+  // Canvas target (same as real widget)
+  const targetValue = 30 + Math.floor(Math.random() * 40);
+  const canvas = document.createElement('canvas');
+  canvas.width = 120;
+  canvas.height = 48;
+  canvas.style.cssText = 'display:block;margin:0 auto 16px auto;';
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(targetValue), 60, 24);
+  }
+  
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = '100';
+  slider.value = '0';
+  slider.style.cssText = 'width:100%;margin:16px 0;cursor:pointer;';
+  
+  const valueDisplay = el('div', 'font-size:28px;font-weight:bold;color:#3b82f6;margin-bottom:16px;', '0');
+  
+  const submitBtn = el('button', 'padding:10px 30px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600;', 'Valider');
+  
+  const branding = el('p', 'color:#cbd5e1;font-size:10px;margin-top:16px;margin-bottom:0;', 'Protégé par HCS-U7');
+  
+  const startTime = Date.now();
+  let inputCount = 0;
+  
+  slider.addEventListener('input', () => {
+    valueDisplay.textContent = slider.value;
+    inputCount++;
+  });
+  
+  const resultBox = el('div', 'margin-top:12px;font-size:13px;display:none;padding:10px;border-radius:6px;');
+  
+  submitBtn.addEventListener('click', () => {
+    const value = parseInt(slider.value, 10);
+    const duration = Date.now() - startTime;
+    const correct = Math.abs(value - targetValue) <= 5;
+    const tooFast = duration < 800;
+    const tooFew = inputCount < 3;
+    const botSuspected = tooFast || tooFew;
+    const success = correct && !botSuspected;
+    
+    resultBox.style.display = 'block';
+    if (success) {
+      resultBox.style.background = '#dcfce7';
+      resultBox.style.color = '#166534';
+      resultBox.textContent = '✅ PASS — value=' + value + ', target=' + targetValue + ', duration=' + duration + 'ms, inputs=' + inputCount;
+    } else {
+      resultBox.style.background = '#fee2e2';
+      resultBox.style.color = '#991b1b';
+      let reason = '';
+      if (!correct) reason += 'WRONG_VALUE ';
+      if (tooFast) reason += 'TOO_FAST(' + duration + 'ms<800ms) ';
+      if (tooFew) reason += 'TOO_FEW_INPUTS(' + inputCount + '<3) ';
+      resultBox.textContent = '❌ FAIL → BLOCK — ' + reason + '| Après échec, la page entière est remplacée par l\'écran de blocage.';
+    }
+  });
+  
+  container.append(title, instruction, canvas, slider, valueDisplay, submitBtn, branding, resultBox);
+  overlay.appendChild(container);
+  preview.appendChild(overlay);
+}
+
+// ═══════════════════════════════════════
+// BUNKER (rendu réel)
+// ═══════════════════════════════════════
+function simulateBunker() {
+  clearPreview();
+  preview.style.background = '#0f172a';
+  
+  const overlay = el('div', 'display:flex;align-items:center;justify-content:center;min-height:400px;font-family:system-ui,-apple-system,sans-serif;');
+  
+  const container = el('div', 'text-align:center;max-width:400px;padding:40px;');
+  
+  const icon = el('div', 'font-size:48px;margin-bottom:16px;', '🛡️');
+  const title = el('h2', 'color:#f1f5f9;margin:0 0 8px 0;font-size:22px;', 'Vérification de sécurité requise');
+  const desc = el('p', 'color:#94a3b8;margin:0 0 24px 0;font-size:14px;line-height:1.5;',
+    'La sécurité renforcée est active. Veuillez compléter la vérification pour continuer.');
+  
+  const targetValue = 40 + Math.floor(Math.random() * 20);
+  const instruction = el('p', 'color:#cbd5e1;margin:0 0 16px 0;font-size:13px;',
+    'Déplacez le curseur précisément sur ' + targetValue);
+  
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = '100';
+  slider.value = '0';
+  slider.style.cssText = 'width:100%;margin:12px 0;cursor:pointer;';
+  
+  const valueDisplay = el('div', 'font-size:32px;font-weight:bold;color:#60a5fa;margin-bottom:20px;', '0');
+  
+  const submitBtn = el('button', 'padding:12px 36px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;', 'Vérifier');
+  
+  const branding = el('p', 'color:#475569;font-size:10px;margin-top:24px;margin-bottom:0;', 'Protégé par HCS-U7 Mode Bunker');
+  
+  slider.addEventListener('input', () => {
+    valueDisplay.textContent = slider.value;
+  });
+  
+  const resultBox = el('div', 'margin-top:12px;font-size:13px;display:none;padding:10px;border-radius:6px;');
+  
+  submitBtn.addEventListener('click', () => {
+    const value = parseInt(slider.value, 10);
+    const success = Math.abs(value - targetValue) <= 3;
+    
+    resultBox.style.display = 'block';
+    if (success) {
+      resultBox.style.background = '#1e3a5f';
+      resultBox.style.color = '#60a5fa';
+      resultBox.textContent = '✅ PASS — Whitelist 15min. L\'utilisateur accède au site. Prochaines visites = pass-through.';
+    } else {
+      resultBox.style.background = '#3b1c1c';
+      resultBox.style.color = '#f87171';
+      instruction.textContent = 'Incorrect. Réessayez — déplacez sur ' + targetValue;
+      instruction.style.color = '#f87171';
+      slider.value = '0';
+      valueDisplay.textContent = '0';
+      resultBox.textContent = '❌ Échec (value=' + value + ', target=' + targetValue + ', tolérance=±3). Retry illimité.';
+    }
+  });
+  
+  container.append(icon, title, desc, instruction, slider, valueDisplay, submitBtn, branding, resultBox);
+  overlay.appendChild(container);
+  preview.appendChild(overlay);
+}
+
+// ═══════════════════════════════════════
+// BLOCK (rendu réel)
+// ═══════════════════════════════════════
+function simulateBlock() {
+  clearPreview();
+  preview.style.background = '#f1f5f9';
+  
+  const wrapper = el('div', 'display:flex;align-items:center;justify-content:center;min-height:400px;font-family:system-ui,-apple-system,sans-serif;');
+  const inner = el('div', 'text-align:center;max-width:500px;padding:40px;');
+  const icon = el('div', 'font-size:64px;margin-bottom:20px;', '🛡️');
+  const h1 = el('h1', 'color:#1e293b;margin:0 0 10px 0;font-size:24px;', 'Accès bloqué');
+  const p1 = el('p', 'color:#64748b;margin:0 0 20px 0;font-size:15px;', 
+    'Votre accès a été bloqué par la protection HCS-U7.');
+  const p2 = el('p', 'color:#94a3b8;font-size:13px;',
+    'Raison : Challenge failed');
+  const p3 = el('p', 'color:#94a3b8;font-size:11px;margin-top:30px;',
+    'Protégé par HCS-U7');
+  
+  const note = el('div', 'background:#fee2e2;color:#991b1b;padding:12px 16px;border-radius:8px;margin-top:20px;font-size:12px;line-height:1.5;text-align:left;',
+    '⚠️ Note : En production, document.body est complètement vidé et remplacé par cet écran. ' +
+    'Le site original disparaît entièrement. Aucun redirect, aucun lien de retour. ' +
+    'L\'utilisateur doit fermer l\'onglet.');
+  
+  inner.append(icon, h1, p1, p2, p3, note);
+  wrapper.appendChild(inner);
+  preview.appendChild(wrapper);
+}
+</script>
+
+</body>
+</html>
