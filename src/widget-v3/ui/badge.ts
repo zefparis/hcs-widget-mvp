@@ -207,24 +207,24 @@ function createCard(): HTMLDivElement {
     gap: '12px',
     flexWrap: 'wrap',
     padding: '10px 14px',
-    background: 'rgba(99,102,241,0.06)',
+    background: 'rgba(74,222,128,0.06)',
     borderRadius: '8px',
     marginBottom: '14px',
-    border: '1px solid rgba(99,102,241,0.1)',
+    border: '1px solid rgba(74,222,128,0.1)',
   });
 
   const metricData = [
-    { value: '518', label: t('cardMetricAttacks'), icon: '\uD83D\uDEE1\uFE0F' },
-    { value: '0', label: t('cardMetricBreaches'), icon: '\u2705' },
-    { value: '9.7/10', label: t('cardMetricAudit'), icon: '\u2B50' },
+    { value: t('cardMetricStatusValue'), label: t('cardMetricStatus'), color: '#4ade80' },
+    { value: '99.9%', label: t('cardMetricUptime'), color: '#4ade80' },
+    { value: '9.7/10', label: t('cardMetricAudit'), color: '#4ade80' },
   ];
 
   for (const m of metricData) {
     const item = document.createElement('div');
     item.style.cssText = css({ textAlign: 'center', flex: '1', minWidth: '70px' });
     const val = document.createElement('div');
-    val.textContent = m.icon + ' ' + m.value;
-    val.style.cssText = css({ fontWeight: '700', fontSize: '13px', color: '#f1f5f9' });
+    val.textContent = m.value;
+    val.style.cssText = css({ fontWeight: '700', fontSize: '13px', color: m.color });
     const lbl = document.createElement('div');
     lbl.textContent = m.label;
     lbl.style.cssText = css({ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.04em' });
