@@ -44,6 +44,12 @@ export async function executeChallenge(hard: boolean = false): Promise<boolean> 
 /**
  * Cognitive-lite: slider challenge (move to target value).
  * Short, minimal friction, accessible.
+ *
+ * Anti-bot hardening:
+ * - Target value rendered via canvas (not readable from DOM text)
+ * - Minimum interaction duration (800ms)
+ * - Minimum slider input events (3) with direction changes
+ * - Detects instant value jumps (bot sets slider.value directly)
  */
 function cognitiveLite(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -52,6 +58,14 @@ function cognitiveLite(): Promise<boolean> {
     const targetValue = 30 + Math.floor(Math.random() * 40); // 30-70
     const tolerance = 5;
     const startTime = Date.now();
+    const MIN_DURATION_MS = 800;
+    const MIN_INPUT_EVENTS = 3;
+
+    // Anti-bot: track slider micro-movements
+    let inputEventCount = 0;
+    let directionChanges = 0;
+    let lastSliderValue = 0;
+    let lastDirection = 0;
 
     // Overlay
     const overlay = el('div', 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999999;');
@@ -63,9 +77,23 @@ function cognitiveLite(): Promise<boolean> {
     // Title
     const title = el('h3', 'margin:0 0 12px 0;color:#1e293b;font-family:system-ui,-apple-system,sans-serif;font-size:18px;', t('challengeTitle'));
 
-    // Instruction
-    const instruction = el('p', 'margin:0 0 20px 0;color:#64748b;font-size:14px;font-family:system-ui,-apple-system,sans-serif;',
-      t('challengeInstruction') + targetValue);
+    // Instruction text (without the number)
+    const instruction = el('p', 'margin:0 0 8px 0;color:#64748b;font-size:14px;font-family:system-ui,-apple-system,sans-serif;',
+      t('challengeInstruction'));
+
+    // Anti-bot: render target number via canvas (not readable via DOM textContent)
+    const targetCanvas = document.createElement('canvas');
+    targetCanvas.width = 120;
+    targetCanvas.height = 48;
+    targetCanvas.style.cssText = 'display:block;margin:0 auto 16px auto;';
+    const ctx = targetCanvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(targetValue), 60, 24);
+    }
 
     // Slider
     const slider = document.createElement('input');
@@ -85,22 +113,42 @@ function cognitiveLite(): Promise<boolean> {
     const branding = el('p', 'color:#cbd5e1;font-size:10px;margin-top:16px;margin-bottom:0;font-family:system-ui,-apple-system,sans-serif;', t('challengeBranding'));
 
     slider.addEventListener('input', () => {
+      const current = parseInt(slider.value, 10);
       valueDisplay.textContent = slider.value;
+      inputEventCount++;
+
+      // Track direction changes (human behavior: overshoots and corrects)
+      const dir = current > lastSliderValue ? 1 : current < lastSliderValue ? -1 : 0;
+      if (dir !== 0 && dir !== lastDirection && lastDirection !== 0) {
+        directionChanges++;
+      }
+      if (dir !== 0) lastDirection = dir;
+      lastSliderValue = current;
     });
 
     submitBtn.addEventListener('click', () => {
       const value = parseInt(slider.value, 10);
-      const success = Math.abs(value - targetValue) <= tolerance;
       const duration = Date.now() - startTime;
 
+      // Anti-bot checks
+      const tooFast = duration < MIN_DURATION_MS;
+      const tooFewEvents = inputEventCount < MIN_INPUT_EVENTS;
+      const valueCorrect = Math.abs(value - targetValue) <= tolerance;
+
+      // Bot detection: correct value but inhuman interaction pattern
+      const botSuspected = tooFast || tooFewEvents;
+      const success = valueCorrect && !botSuspected;
+
       log('challenge', 'Cognitive-lite result: ' + (success ? 'PASS' : 'FAIL') +
-        ' (value=' + value + ', target=' + targetValue + ', duration=' + duration + 'ms)');
+        ' (value=' + value + ', target=' + targetValue + ', duration=' + duration + 'ms' +
+        ', inputs=' + inputEventCount + ', dirChanges=' + directionChanges +
+        (botSuspected ? ', BOT_SUSPECTED' : '') + ')');
 
       removeById(OVERLAY_ID);
       resolve(success);
     });
 
-    append(container, title, instruction, slider, valueDisplay, submitBtn, branding);
+    append(container, title, instruction, targetCanvas, slider, valueDisplay, submitBtn, branding);
     overlay.appendChild(container);
     appendToBody(overlay);
   });

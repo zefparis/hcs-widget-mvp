@@ -54,6 +54,13 @@ function obfuscateBody(raw: ValidateRequestRaw): Record<string, unknown> {
       nm: raw.behavior.noMouseMovement,
       lm: raw.behavior.linearMovement,
       ks: raw.behavior.keystrokes,
+      // Keystroke dynamics
+      ki: Math.round(raw.behavior.keystrokeIntervalAvg * 100),
+      kj: Math.round(raw.behavior.keystrokeIntervalStd * 100),
+      kd: Math.round(raw.behavior.keystrokeDwellAvg * 100),
+      ke: Math.round(raw.behavior.keystrokeDwellStd * 100),
+      kf: Math.round(raw.behavior.flightTimeAvg * 100),
+      kg: Math.round(raw.behavior.flightTimeStd * 100),
       mt: Math.round(raw.behavior.microTimingEntropy * 100),
       ti: Math.round(raw.behavior.timeToFirstInteraction * 100),
       ig: raw.behavior.idleGaps,
@@ -89,6 +96,9 @@ function obfuscateBody(raw: ValidateRequestRaw): Record<string, unknown> {
       sv: Math.round(raw.behavior.scrollVelocityAvg * 100),
       sc: raw.behavior.scrollDirectionChanges,
       ce: raw.behavior.copyPasteEvents,
+      pv: raw.behavior.pageViews,
+      vh: raw.behavior.visibilityHiddenCount,
+      vd: raw.behavior.totalHiddenDuration,
     },
     rb: {
       t: Math.round(raw.riskBreakdown.total),

@@ -65,8 +65,34 @@ export function assessRisk(): RiskBreakdown {
   }
   lastAssessTime = now;
 
-  // 6. Network (placeholder — enriched by server)
-  const networkScore = 0;
+  // 6. Network intelligence (client-side signals)
+  let networkScore = 0;
+  try {
+    // Connection type: datacenter / hosting IPs rarely use 'cellular' or 'wifi'
+    const conn = (navigator as any).connection;
+    if (conn) {
+      // effectiveType '4g'/'3g' on datacenter is unusual but not penalized
+      // rtt = 0 is suspicious (local proxy / headless)
+      if (typeof conn.rtt === 'number' && conn.rtt === 0) {
+        networkScore += 15;
+        reasons.push('n1');
+      }
+      // saveData on a bot is unusual (bots don't set this)
+      // But no penalty — some real users enable it
+    }
+    // Navigation timing RTT: very low (<5ms) suggests localhost/proxy
+    if (typeof performance !== 'undefined' && performance.getEntriesByType) {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      if (nav && nav.connectEnd > 0 && nav.connectStart > 0) {
+        const connectMs = nav.connectEnd - nav.connectStart;
+        if (connectMs < 1) {
+          networkScore += 10;
+          reasons.push('n2');
+        }
+      }
+    }
+  } catch { /* silent */ }
+  networkScore = clamp(networkScore);
 
   const components = {
     fingerprint: clamp(fpResult.score),

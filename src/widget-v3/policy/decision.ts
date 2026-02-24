@@ -11,10 +11,9 @@ import { combineRisk, ema } from '../risk/scoring';
 import { executeAllow } from '../actions/allow';
 import { executeSoft } from '../actions/soft';
 import { executeChallenge } from '../actions/challenge';
-import { executeBunker } from '../actions/bunker';
+import { executeBunker, clearBunkerWhitelist } from '../actions/bunker';
 import { executeBlock } from '../actions/block';
 import { validate } from '../api/validate';
-import { clearBunkerWhitelist } from '../actions/bunker';
 import { applyDevTolerance } from '../risk/scoring';
 
 /**

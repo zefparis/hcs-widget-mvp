@@ -57,6 +57,8 @@ export interface BehaviorSignals {
 
   copyPasteEvents: number;
   pageViews: number;
+  visibilityHiddenCount: number;
+  totalHiddenDuration: number;
 
   microTimingEntropy: number;
   timingDistributionSkewness: number;
@@ -113,6 +115,23 @@ let deviceMotionCount = 0;
 
 let copyPasteCount = 0;
 const microTimings: number[] = [];
+
+// Multi-page tracking
+let pageViewCount = 1;
+let visibilityHiddenCount = 0;
+let totalHiddenDuration = 0;
+let hiddenSince: number | null = null;
+
+function loadPageViews(): number {
+  try {
+    const v = sessionStorage.getItem('__hcs_pv');
+    return v ? parseInt(v, 10) || 0 : 0;
+  } catch { return 0; }
+}
+
+function savePageViews(count: number): void {
+  try { sessionStorage.setItem('__hcs_pv', String(count)); } catch { /* silent */ }
+}
 
 // ── Math helpers ──
 function mean(a: number[]): number {
@@ -372,6 +391,11 @@ function onCopyPaste(): void { recordActivity(); copyPasteCount++; }
 export function initBehavior(): void {
   startTime = Date.now();
   lastActivity = startTime;
+
+  // Multi-page tracking via sessionStorage
+  pageViewCount = loadPageViews() + 1;
+  savePageViews(pageViewCount);
+
   const opts: AddEventListenerOptions = { passive: true };
   document.addEventListener('mousemove', onMouseMove as EventListener, opts);
   document.addEventListener('click', onClick, opts);
@@ -385,6 +409,17 @@ export function initBehavior(): void {
   window.addEventListener('deviceorientation', onDeviceOrientation as EventListener, opts);
   document.addEventListener('copy', onCopyPaste, opts);
   document.addEventListener('paste', onCopyPaste, opts);
+
+  // Visibility change detection (bots rarely trigger 'hidden')
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      visibilityHiddenCount++;
+      hiddenSince = Date.now();
+    } else if (hiddenSince) {
+      totalHiddenDuration += Date.now() - hiddenSince;
+      hiddenSince = null;
+    }
+  }, opts);
 }
 
 export function getSignals(): BehaviorSignals {
@@ -435,7 +470,9 @@ export function getSignals(): BehaviorSignals {
     idleGaps,
     timingEntropy: timingEntropy(microTimings),
     copyPasteEvents: copyPasteCount,
-    pageViews: 1,
+    pageViews: pageViewCount,
+    visibilityHiddenCount,
+    totalHiddenDuration: Math.round(totalHiddenDuration / 1000),
     microTimingEntropy: microTimingEntropy(),
     timingDistributionSkewness: skewness(mi),
     timingDistributionKurtosis: kurtosis(mi),
