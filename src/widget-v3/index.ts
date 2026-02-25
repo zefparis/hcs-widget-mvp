@@ -73,8 +73,15 @@ async function boot(): Promise<void> {
   sendPing().catch(() => { /* silent */ });
 
   // 6. Run decision pipeline
+  // On touch devices, wait briefly for mobile sensors (gyro, accel) to collect data
+  const isTouchDevice = 'ontouchstart' in window;
+  const sensorWarmupMs = isTouchDevice ? 1500 : 0;
+
   onReady(async () => {
     try {
+      if (sensorWarmupMs > 0) {
+        await new Promise(r => setTimeout(r, sensorWarmupMs));
+      }
       const decision = await runDecision();
       updateBadge(state.lastRisk?.total ?? 0, decision);
       state.ready = true;

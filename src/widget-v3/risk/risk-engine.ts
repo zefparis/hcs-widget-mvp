@@ -37,9 +37,9 @@ export function assessRisk(): RiskBreakdown {
   const fpResult = analyzeFingerprint(fp);
   reasons.push(...fpResult.signals);
 
-  // 2. Behavior analysis
+  // 2. Behavior analysis (pass touchSupport so mobile is detected before first touch)
   const behavior = getSignals();
-  const behResult = analyzeBehavior(behavior);
+  const behResult = analyzeBehavior(behavior, fp.touchSupport);
   reasons.push(...behResult.signals);
 
   // 3. Automation score (subset of fingerprint focused on webdriver/headless)
