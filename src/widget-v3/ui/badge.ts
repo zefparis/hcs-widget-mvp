@@ -53,40 +53,31 @@ export function showBadge(): void {
     position: 'fixed',
     bottom: '16px',
     right: '16px',
-    background: 'rgba(15,23,42,0.92)',
-    color: '#e2e8f0',
-    padding: '7px 14px 7px 10px',
-    borderRadius: '8px',
-    fontFamily: FONT,
-    fontSize: '12px',
-    fontWeight: '500',
+    width: '36px',
+    height: '36px',
+    background: 'rgba(15,23,42,0.45)',
+    borderRadius: '50%',
     zIndex: '2147483646',
     cursor: 'pointer',
     userSelect: 'none',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    border: '1px solid rgba(99,102,241,0.25)',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    border: '1px solid rgba(99,102,241,0.15)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    transition: 'opacity 0.2s, transform 0.2s',
+    justifyContent: 'center',
+    transition: 'opacity 0.3s, transform 0.3s, box-shadow 0.2s, border-color 0.2s',
     opacity: '0',
     transform: 'translateY(8px)',
   });
 
-  // Shield icon
+  // Shield icon (slightly larger for standalone display)
   const iconWrap = document.createElement('span');
-  iconWrap.innerHTML = SHIELD_SVG;
-  iconWrap.style.cssText = 'display:flex;align-items:center;flex-shrink:0;';
-
-  // Label
-  const label = span(t('badgeLabel'), { color: '#94a3b8', letterSpacing: '0.01em' });
-  const brand = span(t('badgeBrand'), { color: '#e2e8f0', fontWeight: '700', letterSpacing: '0.02em' });
+  iconWrap.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + ACCENT + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.85"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke="' + ACCENT + '"/></svg>';
+  iconWrap.style.cssText = 'display:flex;align-items:center;justify-content:center;';
 
   badge.appendChild(iconWrap);
-  badge.appendChild(label);
-  badge.appendChild(brand);
 
   // Click → toggle card
   badge.addEventListener('click', (e) => {
@@ -96,12 +87,14 @@ export function showBadge(): void {
 
   // Hover effect
   badge.addEventListener('mouseenter', () => {
-    badge.style.border = '1px solid rgba(99,102,241,0.5)';
-    badge.style.boxShadow = '0 2px 16px rgba(99,102,241,0.15)';
+    badge.style.border = '1px solid rgba(99,102,241,0.4)';
+    badge.style.boxShadow = '0 2px 16px rgba(99,102,241,0.2)';
+    badge.style.background = 'rgba(15,23,42,0.6)';
   });
   badge.addEventListener('mouseleave', () => {
-    badge.style.border = '1px solid rgba(99,102,241,0.25)';
-    badge.style.boxShadow = '0 2px 12px rgba(0,0,0,0.3)';
+    badge.style.border = '1px solid rgba(99,102,241,0.15)';
+    badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+    badge.style.background = 'rgba(15,23,42,0.45)';
   });
 
   appendToBody(badge);
@@ -119,7 +112,7 @@ export function showBadge(): void {
 function createCard(): HTMLDivElement {
   const card = div(CARD_ID, {
     position: 'fixed',
-    bottom: '56px',
+    bottom: '60px',
     right: '16px',
     width: '320px',
     maxWidth: 'calc(100vw - 32px)',
