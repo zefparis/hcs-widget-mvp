@@ -99,6 +99,15 @@ function obfuscateBody(raw: ValidateRequestRaw): Record<string, unknown> {
       pv: raw.behavior.pageViews,
       vh: raw.behavior.visibilityHiddenCount,
       vd: raw.behavior.totalHiddenDuration,
+      // Contextual plasticity
+      hd:  raw.behavior.hourOfDay,
+      dw:  raw.behavior.dayOfWeek,
+      bl:  Math.round(raw.behavior.batteryLevel * 100),
+      do:  raw.behavior.deviceOrientation,
+      nt:  raw.behavior.networkType,
+      dep: raw.behavior.sessionDepth,
+      tp2: raw.behavior.timeOnPage,
+      sp:  raw.behavior.scrollDepthPct,
     },
     rb: {
       t: Math.round(raw.riskBreakdown.total),

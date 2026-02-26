@@ -63,6 +63,16 @@ export interface BehaviorSignals {
   microTimingEntropy: number;
   timingDistributionSkewness: number;
   timingDistributionKurtosis: number;
+
+  // Contextual plasticity signals (Brain modelling)
+  hourOfDay: number;          // 0–23
+  dayOfWeek: number;          // 0=Sun … 6=Sat
+  batteryLevel: number;       // 0.0–1.0, -1 if unavailable
+  deviceOrientation: number;  // 0=portrait,1=landscape,2=unknown
+  networkType: number;        // 0=unknown,1=4g,2=wifi,3=3g,4=slow
+  sessionDepth: number;       // page nav depth in sessionStorage
+  timeOnPage: number;         // seconds since page load
+  scrollDepthPct: number;     // 0–100
 }
 
 interface Point { x: number; y: number; t: number; }
@@ -121,6 +131,57 @@ let pageViewCount = 1;
 let visibilityHiddenCount = 0;
 let totalHiddenDuration = 0;
 let hiddenSince: number | null = null;
+
+// ── Contextual plasticity ──
+let batteryLevelCache = -1;
+let maxScrollY = 0;
+
+function loadSessionDepth(): number {
+  try {
+    const v = sessionStorage.getItem('__hcs_sd');
+    return v ? parseInt(v, 10) || 1 : 1;
+  } catch { return 1; }
+}
+
+function saveSessionDepth(d: number): void {
+  try { sessionStorage.setItem('__hcs_sd', String(d)); } catch { /* silent */ }
+}
+
+function getNetworkType(): number {
+  try {
+    const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    if (!conn) return 0;
+    const et = conn.effectiveType || conn.type || '';
+    if (et === '4g' || et === 'wifi') return et === 'wifi' ? 2 : 1;
+    if (et === '3g') return 3;
+    if (et === '2g' || et === 'slow-2g') return 4;
+    return 0;
+  } catch { return 0; }
+}
+
+function getDeviceOrientation(): number {
+  try {
+    if (typeof screen !== 'undefined' && screen.orientation) {
+      return screen.orientation.type.startsWith('portrait') ? 0 : 1;
+    }
+    if (typeof window !== 'undefined' && window.innerWidth && window.innerHeight) {
+      return window.innerHeight >= window.innerWidth ? 0 : 1;
+    }
+    return 2;
+  } catch { return 2; }
+}
+
+function initBattery(): void {
+  try {
+    const nav = navigator as any;
+    if (nav.getBattery) {
+      nav.getBattery().then((b: any) => {
+        batteryLevelCache = b.level ?? -1;
+        b.addEventListener('levelchange', () => { batteryLevelCache = b.level ?? -1; });
+      }).catch(() => { /* silent */ });
+    }
+  } catch { /* silent */ }
+}
 
 function loadPageViews(): number {
   try {
@@ -396,12 +457,25 @@ export function initBehavior(): void {
   pageViewCount = loadPageViews() + 1;
   savePageViews(pageViewCount);
 
+  // Session depth tracking
+  const depth = loadSessionDepth() + 1;
+  saveSessionDepth(depth);
+
+  // Battery async init
+  initBattery();
+
   const opts: AddEventListenerOptions = { passive: true };
   document.addEventListener('mousemove', onMouseMove as EventListener, opts);
   document.addEventListener('click', onClick, opts);
   document.addEventListener('keydown', onKeyDown as EventListener, opts);
   document.addEventListener('keyup', onKeyUp as EventListener, opts);
   document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+
+  // Track max scroll for scroll_depth_pct
+  window.addEventListener('scroll', () => {
+    const docH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight;
+    if (docH > 0) maxScrollY = Math.max(maxScrollY, Math.round(((window.scrollY || document.documentElement.scrollTop) / docH) * 100));
+  }, { passive: true });
   document.addEventListener('touchstart', onTouchStart as EventListener, opts);
   document.addEventListener('touchmove', onTouchMove as EventListener, opts);
   document.addEventListener('touchend', onTouchEnd as EventListener, opts);
@@ -476,5 +550,15 @@ export function getSignals(): BehaviorSignals {
     microTimingEntropy: microTimingEntropy(),
     timingDistributionSkewness: skewness(mi),
     timingDistributionKurtosis: kurtosis(mi),
+
+    // Contextual plasticity
+    hourOfDay:         new Date().getHours(),
+    dayOfWeek:         new Date().getDay(),
+    batteryLevel:      batteryLevelCache,
+    deviceOrientation: getDeviceOrientation(),
+    networkType:       getNetworkType(),
+    sessionDepth:      loadSessionDepth(),
+    timeOnPage:        Math.round(dur),
+    scrollDepthPct:    Math.min(100, maxScrollY),
   };
 }
