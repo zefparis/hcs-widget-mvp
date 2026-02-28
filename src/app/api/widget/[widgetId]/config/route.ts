@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { padResponseTime } from '@/lib/timing-safe';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ widgetId: string }> }
 ) {
+  const startTime = Date.now();
   try {
     const { widgetId } = await params;
 
     // Validate widgetId
     if (!widgetId || widgetId.length > 255 || /[^a-zA-Z0-9\-_]/.test(widgetId)) {
+      await padResponseTime(startTime);
       return NextResponse.json(
         { success: false, error: 'Invalid widget ID' },
         { status: 400 }
@@ -38,6 +41,7 @@ export async function GET(
     if (response.ok) {
       const data = await response.json();
       const widget = data.widget || data;
+      await padResponseTime(startTime);
       return NextResponse.json({
         success: true,
         widget: {
@@ -49,6 +53,7 @@ export async function GET(
 
     // Fallback si le backend ne répond pas correctement
     if (response.status === 404) {
+      await padResponseTime(startTime);
       return NextResponse.json(
         { success: false, error: 'Widget not found' },
         { status: 404 }
@@ -73,6 +78,7 @@ export async function GET(
       language: 'fr',
     };
 
+    await padResponseTime(startTime);
     return NextResponse.json({
       success: true,
       widget: fallbackWidget,
@@ -103,6 +109,7 @@ export async function GET(
       language: 'fr',
     };
 
+    await padResponseTime(startTime);
     return NextResponse.json({
       success: true,
       widget: fallbackWidget,
