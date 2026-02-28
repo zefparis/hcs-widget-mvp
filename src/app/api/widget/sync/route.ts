@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('❌ Widget sync error:', error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error', details: String(error) },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }

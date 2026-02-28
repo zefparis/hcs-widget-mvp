@@ -6,6 +6,14 @@ export async function GET(
 ) {
   try {
     const { widgetId } = await params;
+
+    // Validate widgetId
+    if (!widgetId || widgetId.length > 255 || /[^a-zA-Z0-9\-_]/.test(widgetId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid widget ID' },
+        { status: 400 }
+      );
+    }
     
     const backendUrl = process.env.HCS_BACKEND_URL || 'https://hcs-u7-backend.onrender.com';
     const apiKey = process.env.HCS_BACKEND_API_KEY || 'hcs_backend_secret_key_2026';
@@ -99,7 +107,6 @@ export async function GET(
       success: true,
       widget: fallbackWidget,
       _fallback: true,
-      _error: String(error),
     });
   }
 }
