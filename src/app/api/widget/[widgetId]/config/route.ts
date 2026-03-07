@@ -18,8 +18,17 @@ export async function GET(
       );
     }
     
-    const backendUrl = process.env.HCS_BACKEND_URL || 'https://hcs-u7-backend.onrender.com';
-    const apiKey = process.env.HCS_BACKEND_API_KEY || 'hcs_backend_secret_key_2026';
+    const backendUrl = process.env.HCS_BACKEND_URL;
+    const apiKey = process.env.HCS_BACKEND_API_KEY;
+
+    if (!backendUrl || !apiKey) {
+      console.error('[CONFIG] Missing HCS_BACKEND_URL or HCS_BACKEND_API_KEY');
+      await padResponseTime(startTime);
+      return NextResponse.json(
+        { success: false, error: 'Service configuration error' },
+        { status: 503 }
+      );
+    }
     const defaultTenantId =
       process.env.HCS_DEFAULT_TENANT_ID ||
       process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID ||

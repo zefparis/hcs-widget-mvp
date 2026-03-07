@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const DASHBOARD_API_KEY = process.env.DASHBOARD_API_KEY || 'hcs_dashboard_secret_key_2026';
+const DASHBOARD_API_KEY = process.env.DASHBOARD_API_KEY;
 
 interface WidgetSyncRequest {
   action: 'sync';
@@ -24,6 +24,14 @@ interface WidgetSyncRequest {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!DASHBOARD_API_KEY) {
+      console.error('[SYNC] Missing DASHBOARD_API_KEY environment variable');
+      return NextResponse.json(
+        { success: false, error: 'Service configuration error' },
+        { status: 503 }
+      );
+    }
+
     const apiKey = req.headers.get('X-HCS-Dashboard-Key');
     
     if (!apiKey || apiKey !== DASHBOARD_API_KEY) {
@@ -53,27 +61,31 @@ export async function POST(req: NextRequest) {
 
     const widgetConfig = mapDashboardToWidget(body.widget);
 
-    const backendUrl = process.env.HCS_BACKEND_URL || 'https://hcs-u7-backend.onrender.com';
-    const backendApiKey = process.env.HCS_BACKEND_API_KEY || 'hcs_backend_secret_key_2026';
+    const backendUrl = process.env.HCS_BACKEND_URL;
+    const backendApiKey = process.env.HCS_BACKEND_API_KEY;
     
-    try {
-      const response = await fetch(`${backendUrl}/api/widgets/${body.widget.id}/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-HCS-Origin': 'widget-mvp',
-          'X-HCS-API-Key': backendApiKey,
-        },
-        body: JSON.stringify(widgetConfig),
-      });
+    if (backendUrl && backendApiKey) {
+      try {
+        const response = await fetch(`${backendUrl}/api/widgets/${body.widget.id}/sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-HCS-Origin': 'widget-mvp',
+            'X-HCS-API-Key': backendApiKey,
+          },
+          body: JSON.stringify(widgetConfig),
+        });
 
-      if (!response.ok) {
-        console.warn('⚠️ Backend sync failed, widget will use local config');
-      } else {
-        console.log('✅ Widget synced to backend');
+        if (!response.ok) {
+          console.warn('⚠️ Backend sync failed, widget will use local config');
+        } else {
+          console.log('✅ Widget synced to backend');
+        }
+      } catch (error) {
+        console.warn('⚠️ Backend unreachable, widget will use local config');
       }
-    } catch (error) {
-      console.warn('⚠️ Backend unreachable, widget will use local config');
+    } else {
+      console.warn('⚠️ Missing HCS_BACKEND_URL or HCS_BACKEND_API_KEY, skipping backend sync');
     }
 
     const embedCode = generateEmbedCode(body.widget.id, body.widget.tenantId);
@@ -146,23 +158,26 @@ function mapDashboardToWidget(dashboardWidget: any) {
 }
 
 function generateEmbedCode(widgetId: string, tenantId: string) {
+  // Sanitize inputs to prevent XSS in generated HTML snippet
+  const safeWidgetId = widgetId.replace(/[^a-zA-Z0-9\-_]/g, '');
+  const safeTenantId = tenantId.replace(/[^a-zA-Z0-9\-_]/g, '');
+  const apiUrl = process.env.NEXT_PUBLIC_HCS_BACKEND_URL || 'https://api.hcs-u7.org';
+
   return `<!-- HCS-U7 Anti-Bot Widget -->
 <script src="https://hcs-widget-mvp.vercel.app/widget/v1/captcha.js"></script>
 <div id="hcs-captcha" 
-     data-hcs-widget-id="${widgetId}"
+     data-hcs-widget-id="${safeWidgetId}"
      data-hcs-callback="onHCSSuccess">
 </div>
 
 <script>
 function onHCSSuccess(token, score) {
-  console.log('✅ Verification success:', { token, score });
-  
-  fetch('https://hcs-u7-backend.onrender.com/hcs/verify-and-redirect', {
+  fetch('${apiUrl}/hcs/verify-and-redirect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
       token: token,
-      tenantId: '${tenantId}',
+      tenantId: '${safeTenantId}',
       appId: 'your_app_id'
     })
   })
