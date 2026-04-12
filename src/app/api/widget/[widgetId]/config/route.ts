@@ -29,10 +29,8 @@ export async function GET(
         { status: 503 }
       );
     }
-    const defaultTenantId =
-      process.env.HCS_DEFAULT_TENANT_ID ||
-      process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID ||
-      'cmku6oui4000a04jofxudcigo';
+    // SECURITY: Only use the server-only env var — never NEXT_PUBLIC_* or hardcoded literals
+    const defaultTenantId = process.env.HCS_DEFAULT_TENANT_ID;
 
     // Appel au backend HCS-U7 réel
     const response = await fetch(
@@ -50,79 +48,47 @@ export async function GET(
     if (response.ok) {
       const data = await response.json();
       const widget = data.widget || data;
+
+      // Resolve tenantId — prefer backend value; fall back only to server-only env var
+      const tenantId = widget.tenantId || defaultTenantId;
+      if (!tenantId) {
+        console.error('[CONFIG] Widget has no tenantId and HCS_DEFAULT_TENANT_ID is not set');
+        await padResponseTime(startTime);
+        return NextResponse.json(
+          { success: false, error: 'Service configuration error' },
+          { status: 500 },
+        );
+      }
+
       await padResponseTime(startTime);
       return NextResponse.json({
         success: true,
-        widget: {
-          ...widget,
-          tenantId: widget.tenantId || defaultTenantId,
-        },
+        widget: { ...widget, tenantId },
       });
     }
 
-    // Fallback si le backend ne répond pas correctement
     if (response.status === 404) {
       await padResponseTime(startTime);
       return NextResponse.json(
         { success: false, error: 'Widget not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    // Si erreur backend, utiliser config de fallback pour le dev
-    console.warn(`Backend returned ${response.status}, using fallback config`);
-    const fallbackWidget = {
-      id: widgetId,
-      name: 'HCS Widget',
-      siteUrl: req.headers.get('origin') || 'http://localhost:3000',
-      tenantId: defaultTenantId,
-      testsConfig: [
-        { testType: 'stroop', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'reaction_time', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'digit_span', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'ran_vocal', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'pattern', enabled: true, trials: 5, difficulty: 'medium' },
-      ],
-      theme: 'light',
-      language: 'fr',
-    };
-
+    // Backend error — do not return a permissive fallback config
+    console.error(`[CONFIG] Backend returned ${response.status} for widget ${widgetId}`);
     await padResponseTime(startTime);
-    return NextResponse.json({
-      success: true,
-      widget: fallbackWidget,
-      _fallback: true,
-    });
+    return NextResponse.json(
+      { success: false, error: 'Service temporarily unavailable' },
+      { status: 503 },
+    );
 
   } catch (error) {
-    console.error('Error fetching widget config:', error);
-    
-    // Fallback en cas d'erreur réseau
-    const { widgetId } = await params;
-    const defaultTenantId =
-      process.env.HCS_DEFAULT_TENANT_ID ||
-      process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID ||
-      'cmku6oui4000a04jofxudcigo';
-    const fallbackWidget = {
-      id: widgetId,
-      name: 'HCS Widget (Offline)',
-      tenantId: defaultTenantId,
-      testsConfig: [
-        { testType: 'stroop', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'reaction_time', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'digit_span', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'ran_vocal', enabled: true, trials: 5, difficulty: 'medium' },
-        { testType: 'pattern', enabled: true, trials: 5, difficulty: 'medium' },
-      ],
-      theme: 'light',
-      language: 'fr',
-    };
-
+    console.error('[CONFIG] Network error fetching widget config:', error);
     await padResponseTime(startTime);
-    return NextResponse.json({
-      success: true,
-      widget: fallbackWidget,
-      _fallback: true,
-    });
+    return NextResponse.json(
+      { success: false, error: 'Service temporarily unavailable' },
+      { status: 503 },
+    );
   }
 }
