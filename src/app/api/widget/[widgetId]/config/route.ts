@@ -19,10 +19,10 @@ export async function GET(
     }
     
     const backendUrl = process.env.HCS_BACKEND_URL;
-    const apiKey = process.env.HCS_BACKEND_API_KEY;
+    const apiKey = process.env.HCS_WIDGET_API_KEY;
 
     if (!backendUrl || !apiKey) {
-      console.error('[CONFIG] Missing HCS_BACKEND_URL or HCS_BACKEND_API_KEY');
+      console.error('[CONFIG] Missing HCS_BACKEND_URL or HCS_WIDGET_API_KEY');
       await padResponseTime(startTime);
       return NextResponse.json(
         { success: false, error: 'Service configuration error' },

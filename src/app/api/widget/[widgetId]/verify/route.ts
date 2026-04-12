@@ -170,7 +170,7 @@ export async function POST(
     }
 
     const backendUrl = process.env.HCS_BACKEND_URL;
-    const apiKey = process.env.HCS_BACKEND_API_KEY;
+    const apiKey = process.env.HCS_WIDGET_API_KEY;
 
     if (!backendUrl || !apiKey) {
       await padResponseTime(startTime);
