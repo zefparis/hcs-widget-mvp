@@ -19,32 +19,70 @@ interface BunkerWhitelistEntry {
   expiresAt: number;
 }
 
-/** Check if current session is whitelisted (passed bunker before) */
-function isWhitelisted(): boolean {
-  if (!supportsSessionStorage()) return false;
+// Capture the widget-server origin at IIFE load time so we can call
+// /api/widget/bunker-pass and /api/widget/bunker-verify on the same host
+// that served this bundle. document.currentScript is available during
+// synchronous IIFE execution (format: iife via esbuild).
+const _widgetOrigin: string | null = (() => {
+  try {
+    const src = (document.currentScript as HTMLScriptElement | null)?.src;
+    if (src) return new URL(src).origin;
+  } catch { /* ignore */ }
+  return null;
+})();
+
+/**
+ * Verify a stored bunker whitelist entry against the server-issued HMAC.
+ * Returns true only if the server confirms the token is valid and unexpired.
+ * Falls back to false (always challenge) if the server is unreachable.
+ */
+async function checkWhitelist(): Promise<boolean> {
+  if (!supportsSessionStorage() || !_widgetOrigin) return false;
   try {
     const raw = sessionStorage.getItem(BUNKER_STORAGE_KEY);
     if (!raw) return false;
     const entry = JSON.parse(raw) as BunkerWhitelistEntry;
-    if (entry.expiresAt > nowSec() && entry.token) {
-      log('bunker', 'Session whitelisted until ' + new Date(entry.expiresAt * 1000).toISOString());
+    if (!entry.token || !entry.expiresAt || entry.expiresAt <= nowSec()) {
+      sessionStorage.removeItem(BUNKER_STORAGE_KEY);
+      return false;
+    }
+    const res = await fetch(_widgetOrigin + '/api/widget/bunker-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: entry.token }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return false;
+    const data = await res.json() as { valid: boolean };
+    if (data?.valid === true) {
+      log('bunker', 'Server-verified whitelist — passing through');
       return true;
     }
     sessionStorage.removeItem(BUNKER_STORAGE_KEY);
-  } catch { /* ignore */ }
+  } catch { /* network error — fall through to challenge */ }
   return false;
 }
 
-/** Add current session to whitelist */
-function addToWhitelist(token: string, ttlSeconds: number): void {
-  if (!supportsSessionStorage()) return;
+/**
+ * Claim a server-issued HMAC whitelist token and store it in sessionStorage.
+ * If the server is unavailable, the whitelist is not stored and the user
+ * will be challenged again on the next page load (safer than trusting localStorage).
+ */
+async function claimWhitelist(ttlSeconds: number): Promise<void> {
+  if (!supportsSessionStorage() || !_widgetOrigin) return;
   try {
-    const entry: BunkerWhitelistEntry = {
-      token,
-      expiresAt: nowSec() + ttlSeconds,
-    };
+    const res = await fetch(_widgetOrigin + '/api/widget/bunker-pass', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ttl: ttlSeconds }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return;
+    const data = await res.json() as { token: string; exp: number };
+    if (!data?.token || !data?.exp) return;
+    const entry: BunkerWhitelistEntry = { token: data.token, expiresAt: data.exp };
     sessionStorage.setItem(BUNKER_STORAGE_KEY, JSON.stringify(entry));
-  } catch { /* ignore */ }
+  } catch { /* server unavailable — no whitelist stored */ }
 }
 
 /**
@@ -52,9 +90,9 @@ function addToWhitelist(token: string, ttlSeconds: number): void {
  * Shows a strict verification gate. If already whitelisted, passes through.
  */
 export async function executeBunker(): Promise<void> {
-  // Check whitelist first
-  if (isWhitelisted()) {
-    log('bunker', 'Whitelisted — passing through');
+  // Verify whitelist against server-signed HMAC nonce (not just sessionStorage truthiness)
+  if (await checkWhitelist()) {
+    log('bunker', 'Server-verified whitelist — passing through');
     state.sessionValidated = true;
     return;
   }
@@ -110,8 +148,8 @@ export async function executeBunker(): Promise<void> {
       const success = Math.abs(value - targetValue) <= tolerance;
 
       if (success) {
-        log('bunker', 'Verification passed — whitelisting for ' + ttl + 's');
-        addToWhitelist(state.sessionToken || 'bunker-pass', ttl);
+        log('bunker', 'Verification passed — claiming server whitelist for ' + ttl + 's');
+        claimWhitelist(ttl).catch(() => { /* non-blocking — user still passes this session */ });
         state.sessionValidated = true;
         removeById(BUNKER_OVERLAY_ID);
         resolve();
